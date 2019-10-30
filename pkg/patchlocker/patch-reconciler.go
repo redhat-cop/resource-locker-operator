@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/util/jsonpath"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -246,6 +247,21 @@ func (lpr *LockedPatchReconciler) getReferecedObject(objref *corev1.ObjectRefere
 
 func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (map[string]interface{}, error) {
 	// look into this: k8s.io/client-go/util/jsonpath
+	jp := jsonpath.New("fieldPath")
+	err := jp.Parse(fieldPath)
+	if err != nil {
+		log.Error(err, "unable to parse ", "fieldPath", fieldPath)
+		return map[string]interface{}{}, err
+	}
+	var buf bytes.Buffer
+	jp.Execute(&buf, obj)
+	log.Info("result ", buf.String())
+	values, err := jp.FindResults(obj)
+	if err != nil {
+		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj)
+		return map[string]interface{}{}, err
+	}
+	log.Info("results ", values)
 	return map[string]interface{}{}, errors.New("not implemented")
 }
 

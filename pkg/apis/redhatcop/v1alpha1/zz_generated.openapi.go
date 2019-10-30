@@ -22,16 +22,18 @@ func schema_pkg_apis_redhatcop_v1alpha1_Patch(ref common.ReferenceCallback) comm
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Patch describe a pacth to be enforced at runtim",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"sourceObjectRefs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "map",
+								"x-kubernetes-list-type": "atomic",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "SourceObject refs is an arrays of refereces to source objects that will be used as input for the template processing",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -43,24 +45,26 @@ func schema_pkg_apis_redhatcop_v1alpha1_Patch(ref common.ReferenceCallback) comm
 					},
 					"targetObjectRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.ObjectReference"),
+							Description: "TargetObjectRef is a reference to the object to which the pacth should be applied.",
+							Ref:         ref("k8s.io/api/core/v1.ObjectReference"),
 						},
 					},
 					"patchType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "see the client.patch file.",
+							Description: "PatchType is the type of patch to be applied, one of \"application/json-patch+json\"'\"application/merge-patch+json\",\"application/strategic-merge-patch+json\",\"application/apply-patch+yaml\" // +kubebuilder:validation:Enum={\"application/json-patch+json\"'\"application/merge-patch+json\",\"application/strategic-merge-patch+json\",\"application/apply-patch+yaml\"}",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"expression": {
+					"patchTemplate": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "PatchTemplate is a go template that will be resolved using the SourceObjectRefs as parameters. The result must be a valid patch based on the pacth type and the target object.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
-				Required: []string{"targetObjectRef", "expression"},
+				Required: []string{"targetObjectRef", "patchTemplate"},
 			},
 		},
 		Dependencies: []string{
@@ -122,11 +126,11 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref common.ReferenceC
 					"resources": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "map",
+								"x-kubernetes-list-type": "atomic",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "INSERT ADDITIONAL SPEC FIELDS - desired state of cluster Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html",
+							Description: "Resources is a list of resource manifests that should be locked into the specified configuration",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -139,17 +143,19 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref common.ReferenceC
 					},
 					"serviceAccountRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
+							Description: "ServiceAccountRef is the service account to be used to run the controllers associated with this configuration",
+							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
 						},
 					},
 					"patches": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "map",
+								"x-kubernetes-list-type": "atomic",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Patches is a list of pacthes that should be encforced at runtime.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{

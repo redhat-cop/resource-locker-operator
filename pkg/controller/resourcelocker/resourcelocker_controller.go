@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	errs "errors"
+	"os"
 	"reflect"
 	"text/template"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/redhat-cop/resource-locker-operator/pkg/lockedresourcecontroller"
 	"github.com/redhat-cop/resource-locker-operator/pkg/patchlocker"
 	"github.com/redhat-cop/resource-locker-operator/pkg/stoppablemanager"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -166,7 +168,7 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 		return &ResourceLocker{}, err
 	}
 	patches, err := getPatches(instance)
-	config, err := getClientFromInstance(instance)
+	config, err := r.getRestConfigFromInstance(instance)
 	if err != nil {
 		return &ResourceLocker{}, err
 	}
@@ -193,8 +195,47 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	}, nil
 }
 
-func getClientFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*rest.Config, error) {
-	return &rest.Config{}, errs.New("not implemented")
+func (r *ReconcileResourceLocker) getRestConfigFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*rest.Config, error) {
+	sa := corev1.ServiceAccount{}
+	err := r.GetClient().Get(context.TODO(), types.NamespacedName{Name: instance.Spec.ServiceAccountRef.Name, Namespace: instance.GetNamespace()}, &sa)
+	if err != nil {
+		log.Error(err, "unable to get the specified", "service account", types.NamespacedName{Name: instance.Spec.ServiceAccountRef.Name, Namespace: instance.GetNamespace()})
+		return &rest.Config{}, err
+	}
+	var tokenSecret corev1.Secret
+	for _, secretRef := range sa.Secrets {
+		secret := corev1.Secret{}
+		err := r.GetClient().Get(context.TODO(), types.NamespacedName{Name: secretRef.Name, Namespace: instance.GetNamespace()}, &secret)
+		if err != nil {
+			log.Error(err, "(ignoring) unable to get ", "ref secret", types.NamespacedName{Name: secretRef.Name, Namespace: instance.GetNamespace()})
+			continue
+		}
+		if secret.Type == "kubernetes.io/service-account-token" {
+			tokenSecret = secret
+			break
+		}
+	}
+	if tokenSecret.Data == nil {
+		errs.New("unable to find secret of type kubernetes.io/service-account-token for service account")
+	}
+	//KUBERNETES_SERVICE_PORT=443
+	//KUBERNETES_SERVICE_HOST=172.30.0.1
+	kubehost, found := os.LookupEnv("KUBERNETES_SERVICE_HOST")
+	if !found {
+		errs.New("unable to lookup environment variable KUBERNETES_SERVICE_HOST")
+	}
+	kubeport, found := os.LookupEnv("KUBERNETES_SERVICE_PORT")
+	if !found {
+		errs.New("unable to lookup environment variable KUBERNETES_SERVICE_PORT")
+	}
+	config := rest.Config{
+		Host:        "https://" + kubehost + ":" + kubeport,
+		BearerToken: string(tokenSecret.Data["token"]),
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: tokenSecret.Data["ca.crt"],
+		},
+	}
+	return &config, nil
 }
 
 func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]patchlocker.Patch, error) {

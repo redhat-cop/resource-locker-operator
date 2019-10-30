@@ -16,27 +16,41 @@ type ResourceLockerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// Resources is a list of resource manifests that should be locked into the specified configuration
 	// +kubebuilder:validation:Optional
-	// +listType=map
+	// +listType=atomic
 	Resources []runtime.RawExtension `json:"resources,omitempty"`
+
+	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
 	// +kubebuilder:validation:Optional
 	ServiceAccountRef corev1.LocalObjectReference `json:"serviceAccountRef,omitempty"`
+
+	// Patches is a list of pacthes that should be encforced at runtime.
 	// +kubebuilder:validation:Optional
-	// +listType=map
+	// +listType=atomic
 	Patches []Patch `json:"patches,omitempty"`
 }
 
+// Patch describe a pacth to be enforced at runtim
 // +k8s:openapi-gen=true
 type Patch struct {
+	// SourceObject refs is an arrays of refereces to source objects that will be used as input for the template processing
 	// +kubebuilder:validation:Optional
-	// +listType=map
+	// +listType=atomic
 	SourceObjectRefs []corev1.ObjectReference `json:"sourceObjectRefs,omitempty"`
+
+	// TargetObjectRef is a reference to the object to which the pacth should be applied.
 	// +kubebuilder:validation:Required
 	TargetObjectRef corev1.ObjectReference `json:"targetObjectRef"`
-	//see the client.patch file.
+
+	// PatchType is the type of patch to be applied, one of "application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum={"application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"}
+	// +kubebuilder:validation:Enum="application/json-patch+json";"application/merge-patch+json";"application/strategic-merge-patch+json";"application/apply-patch+yaml"
+	/*// +kubebuilder:validation:Enum={"application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"}*/
 	PatchType types.PatchType `json:"patchType,omitempty"`
+
+	// PatchTemplate is a go template that will be resolved using the SourceObjectRefs as parameters. The result must be a valid patch based on the pacth type and the target object.
 	// +kubebuilder:validation:Required
 	PatchTemplate string `json:"patchTemplate"`
 }
