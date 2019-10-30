@@ -3,6 +3,7 @@ package resourcelocker
 import (
 	"context"
 	"encoding/json"
+	errs "errors"
 	"reflect"
 	"text/template"
 
@@ -10,10 +11,12 @@ import (
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	redhatcopv1alpha1 "github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	"github.com/redhat-cop/resource-locker-operator/pkg/lockedresourcecontroller"
+	"github.com/redhat-cop/resource-locker-operator/pkg/patchlocker"
 	"github.com/redhat-cop/resource-locker-operator/pkg/stoppablemanager"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -125,14 +128,9 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 	return reconcile.Result{}, nil
 }
 
-type Patch struct {
-	v1alpha1.Patch
-	template.Template
-}
-
 type ResourceLocker struct {
 	LockedResources []unstructured.Unstructured
-	Patches         []Patch
+	Patches         []patchlocker.Patch
 	Manager         stoppablemanager.StoppableManager
 }
 
@@ -168,18 +166,22 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 		return &ResourceLocker{}, err
 	}
 	patches, err := getPatches(instance)
-	stoppableManager, err := stoppablemanager.NewStoppableManager(r.GetRestConfig(), manager.Options{})
+	config, err := getClientFromInstance(instance)
+	if err != nil {
+		return &ResourceLocker{}, err
+	}
+	stoppableManager, err := stoppablemanager.NewStoppableManager(config, manager.Options{})
 	if err != nil {
 		return &ResourceLocker{}, err
 	}
 	for _, lockedResource := range lockedResources {
-		_, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager, lockedResource)
+		_, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
 	}
 	for _, patch := range patches {
-		_, err := patchlocker.NewPatchLocker(stoppableManager, patch)
+		_, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
@@ -191,15 +193,19 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	}, nil
 }
 
-func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]Patch, error) {
-	patches := []Patch{}
+func getClientFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*rest.Config, error) {
+	return &rest.Config{}, errs.New("not implemented")
+}
+
+func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]patchlocker.Patch, error) {
+	patches := []patchlocker.Patch{}
 	for _, patch := range instance.Spec.Patches {
-		template, err := template.New(getPatchName(instance, &patch)).Parse(patch.Expression)
+		template, err := template.New(getPatchName(instance, &patch)).Parse(patch.PatchTemplate)
 		if err != nil {
-			log.Error(err, "unable to parse ", "template", patch.Expression)
-			return []Patch{}, err
+			log.Error(err, "unable to parse ", "template", patch.PatchTemplate)
+			return []patchlocker.Patch{}, err
 		}
-		patches = append(patches, Patch{
+		patches = append(patches, patchlocker.Patch{
 			Patch:    patch,
 			Template: *template,
 		})

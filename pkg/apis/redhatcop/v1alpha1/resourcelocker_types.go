@@ -38,7 +38,7 @@ type Patch struct {
 	// +kubebuilder:validation:Enum={"application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"}
 	PatchType types.PatchType `json:"patchType,omitempty"`
 	// +kubebuilder:validation:Required
-	Expression string `json:"expression"`
+	PatchTemplate string `json:"patchTemplate"`
 }
 
 // ResourceLockerStatus defines the observed state of ResourceLocker

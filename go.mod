@@ -6,11 +6,13 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/redhat-cop/operator-utils v0.0.0-20191011134647-d53c2c139d07
 	github.com/spf13/pflag v1.0.3
+	golang.org/x/tools/gopls v0.1.7 // indirect
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c
 	sigs.k8s.io/controller-runtime v0.2.0
+	sigs.k8s.io/yaml v1.1.0
 )
 
 // Pinned to kubernetes-1.14.1
