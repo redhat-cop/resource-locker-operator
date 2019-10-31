@@ -12,11 +12,7 @@ spec:
       name: test
       namespace: resource-locker-test
     patchTemplate: |
-      apiVersion: v1
-      kind: ServiceAccount
       metadata:
-        name: test
-        namespace: resource-locker-test
         annotations:
-        - ciao: hello
+          ciao: hello
     patchType: application/strategic-merge-patch+json        

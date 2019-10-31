@@ -175,7 +175,10 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	if err != nil {
 		return &ResourceLocker{}, err
 	}
-	stoppableManager, err := stoppablemanager.NewStoppableManager(config, manager.Options{})
+	stoppableManager, err := stoppablemanager.NewStoppableManager(config, manager.Options{
+		MetricsBindAddress: "0",
+		LeaderElection:     false,
+	})
 	if err != nil {
 		return &ResourceLocker{}, err
 	}

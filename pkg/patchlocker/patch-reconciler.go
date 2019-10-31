@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/yaml"
 )
 
 var controllername = "controller_patchlocker"
@@ -208,13 +209,21 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 	var b bytes.Buffer
 	err = lpr.Template.Execute(&b, sourceMaps)
 	if err != nil {
-		log.Error(err, "unable to process ", "template", lpr.Template, "parameters", sourceMaps)
+		log.Error(err, "unable to process ", "template ", lpr.Template, "parameters", sourceMaps)
 		return reconcile.Result{}, err
 	}
 	log.Info("processed", "template", b.String())
+	// convert the patch to from yaml to json
+	bb, err := yaml.YAMLToJSON(b.Bytes())
+
+	if err != nil {
+		log.Error(err, "unable to convert to json", "processed template", b.String())
+		return reconcile.Result{}, err
+	}
+	log.Info("json", "patch", string(bb))
 	//apply the patch
 
-	patch := client.ConstantPatch(lpr.PatchType, b.Bytes())
+	patch := client.ConstantPatch(lpr.PatchType, bb)
 
 	err = lpr.GetClient().Patch(context.TODO(), targetObj, patch)
 
@@ -252,6 +261,9 @@ func (lpr *LockedPatchReconciler) getReferecedObject(objref *corev1.ObjectRefere
 }
 
 func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (map[string]interface{}, error) {
+	if fieldPath == "" {
+		return obj.UnstructuredContent(), nil
+	}
 	// look into this: k8s.io/client-go/util/jsonpath
 	jp := jsonpath.New("fieldPath")
 	err := jp.Parse(fieldPath)
@@ -261,7 +273,7 @@ func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (map[
 	}
 	var buf bytes.Buffer
 	jp.Execute(&buf, obj)
-	log.Info("result ", buf.String())
+	log.Info("path", "result ", buf.String())
 	values, err := jp.FindResults(obj)
 	if err != nil {
 		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj)
