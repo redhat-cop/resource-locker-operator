@@ -1,0 +1,17 @@
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: ResourceLocker
+metadata:
+  name: test-simple-resource
+spec:
+  resources:
+  - apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: small-size
+      namespace: resource-locker-test
+    spec:
+      hard:
+        requests.cpu: "4" 
+        requests.memory: "2Gi"
+  serviceAccountRef: 
+    name: default      

@@ -1,0 +1,22 @@
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: ResourceLocker
+metadata:
+  name: test-simple-patch
+spec:
+  serviceAccountRef: 
+    name: default
+  patches:
+  - targetObjectRef:
+      apiVersion: v1
+      kind: ServiceAccount
+      name: test
+      namespace: resource-locker-test
+    patchTemplate: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: test
+        namespace: resource-locker-test
+        annotations:
+        - ciao: hello
+    patchType: application/strategic-merge-patch+json        

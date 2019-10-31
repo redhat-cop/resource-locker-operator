@@ -45,7 +45,6 @@ spec:
                   patchType:
                     description: PatchType is the type of patch to be applied, one
                       of "application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"
-                      // +kubebuilder:validation:Enum={"application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"}
                     enum:
                     - application/json-patch+json
                     - application/merge-patch+json

@@ -124,25 +124,25 @@ type enqueueRequestForPatch struct {
 var enqueueLog = logf.Log.WithName("eventhandler").WithName("EnqueueRequestForObject")
 
 func (e *enqueueRequestForPatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	enqueueLog.Info("CreateEvent received ", "event", evt)
+	//enqueueLog.Info("CreateEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Update implements EventHandler
 func (e *enqueueRequestForPatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	enqueueLog.Info("UpdateEvent received ", "event", evt)
+	//enqueueLog.Info("UpdateEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Delete implements EventHandler
 func (e *enqueueRequestForPatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	enqueueLog.Info("DeleteEvent received ", "event", evt)
+	//enqueueLog.Info("DeleteEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Generic implements EventHandler
 func (e *enqueueRequestForPatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-	enqueueLog.Info("GenericEvent received ", "event", evt)
+	//enqueueLog.Info("GenericEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
@@ -155,23 +155,29 @@ var predicateLog = logf.Log.WithName("predicate").WithName("ReferenceModifiedPre
 
 // Update implements default UpdateEvent filter for validating resource version change
 func (p *referenceModifiedPredicate) Update(e event.UpdateEvent) bool {
-	predicateLog.Info("UpdateEvent received ", "event", e)
-	return true
+	//predicateLog.Info("UpdateEvent received ", "event", e)
+	if e.MetaNew.GetName() == p.ObjectReference.Name && e.MetaNew.GetNamespace() == p.ObjectReference.Namespace {
+		return true
+	}
+	return false
 }
 
 func (p *referenceModifiedPredicate) Create(e event.CreateEvent) bool {
-	predicateLog.Info("CreateEvent received ", "event", e)
-	return true
+	//predicateLog.Info("CreateEvent received ", "event", e)
+	if e.Meta.GetName() == p.ObjectReference.Name && e.Meta.GetNamespace() == p.ObjectReference.Namespace {
+		return true
+	}
+	return false
 }
 
 func (p *referenceModifiedPredicate) Delete(e event.DeleteEvent) bool {
-	predicateLog.Info("DeleteEvent received ", "event", e)
+	//predicateLog.Info("DeleteEvent received ", "event", e)
 	// we ignore Delete events because if we loosing references there is no point in trying to recompute the patch
 	return false
 }
 
 func (p *referenceModifiedPredicate) Generic(e event.GenericEvent) bool {
-	predicateLog.Info("GenericEvent received ", "event", e)
+	//predicateLog.Info("GenericEvent received ", "event", e)
 	// we ignore Generic events
 	return false
 }
@@ -205,7 +211,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 		log.Error(err, "unable to process ", "template", lpr.Template, "parameters", sourceMaps)
 		return reconcile.Result{}, err
 	}
-
+	log.Info("processed", "template", b.String())
 	//apply the patch
 
 	patch := client.ConstantPatch(lpr.PatchType, b.Bytes())

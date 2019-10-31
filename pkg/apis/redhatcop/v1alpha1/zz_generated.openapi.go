@@ -51,7 +51,7 @@ func schema_pkg_apis_redhatcop_v1alpha1_Patch(ref common.ReferenceCallback) comm
 					},
 					"patchType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PatchType is the type of patch to be applied, one of \"application/json-patch+json\"'\"application/merge-patch+json\",\"application/strategic-merge-patch+json\",\"application/apply-patch+yaml\" // +kubebuilder:validation:Enum={\"application/json-patch+json\"'\"application/merge-patch+json\",\"application/strategic-merge-patch+json\",\"application/apply-patch+yaml\"}",
+							Description: "PatchType is the type of patch to be applied, one of \"application/json-patch+json\"'\"application/merge-patch+json\",\"application/strategic-merge-patch+json\",\"application/apply-patch+yaml\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

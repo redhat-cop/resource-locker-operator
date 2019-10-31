@@ -24,6 +24,7 @@ type ResourceLockerSpec struct {
 
 	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="{Name:default}"
 	ServiceAccountRef corev1.LocalObjectReference `json:"serviceAccountRef,omitempty"`
 
 	// Patches is a list of pacthes that should be encforced at runtime.
@@ -47,7 +48,7 @@ type Patch struct {
 	// PatchType is the type of patch to be applied, one of "application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum="application/json-patch+json";"application/merge-patch+json";"application/strategic-merge-patch+json";"application/apply-patch+yaml"
-	/*// +kubebuilder:validation:Enum={"application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"}*/
+	// +kubebuilder:default:="application/strategic-merge-patch+json"
 	PatchType types.PatchType `json:"patchType,omitempty"`
 
 	// PatchTemplate is a go template that will be resolved using the SourceObjectRefs as parameters. The result must be a valid patch based on the pacth type and the target object.

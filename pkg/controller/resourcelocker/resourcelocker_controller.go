@@ -46,7 +46,8 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileResourceLocker{
-		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+		ReconcilerBase:  util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+		ResourceLockers: map[string]ResourceLocker{},
 	}
 }
 
@@ -102,6 +103,8 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	//TODO manage lifecycle
 
 	//First we build the resource locker corresponding to this instance
 	newResourceLocker, err := r.getResourceLockerFromInstance(instance)

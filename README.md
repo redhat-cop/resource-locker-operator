@@ -18,6 +18,8 @@ Using the [operator-sdk](https://github.com/operator-framework/operator-sdk), ru
 
 ```shell
 oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yaml
+export KUBERNETES_SERVICE_HOST=<your kube host>
+export KUBERNETES_SERVICE_PORT=<your kube port>
 OPERATOR_NAME='resource-locker-operator' operator-sdk --verbose up local --namespace ""
 ```
 
