@@ -14,6 +14,9 @@ oc apply -f ./test/simple_patch.yaml -n resource-locker-test
 ```
 
 ```shell
-oc create sa test -n resource-locker-test
 oc apply -f ./test/complex_patch.yaml -n resource-locker-test
+```
+
+```shell
+oc apply -f ./test/field_patch.yaml -n resource-locker-test
 ```

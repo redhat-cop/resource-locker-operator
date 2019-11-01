@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -265,21 +267,27 @@ func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (map[
 		return obj.UnstructuredContent(), nil
 	}
 	// look into this: k8s.io/client-go/util/jsonpath
-	jp := jsonpath.New("fieldPath")
-	err := jp.Parse(fieldPath)
+	fieldPath, err := relaxedJSONPathExpression(fieldPath)
+	if err != nil {
+		log.Error(err, "unable to relaxively parse ", "fieldPath", fieldPath)
+		return map[string]interface{}{}, err
+	}
+	jp := jsonpath.New("fieldPath:" + fieldPath)
+	err = jp.Parse(fieldPath)
 	if err != nil {
 		log.Error(err, "unable to parse ", "fieldPath", fieldPath)
 		return map[string]interface{}{}, err
 	}
-	var buf bytes.Buffer
-	jp.Execute(&buf, obj)
-	log.Info("path", "result ", buf.String())
-	values, err := jp.FindResults(obj)
+	//var buf bytes.Buffer
+	//jp.Execute(&buf, obj)
+	//log.Info("path", "result ", buf.String())
+	log.Info("applying ", "fieldPath ", fieldPath, " to object ", obj.UnstructuredContent())
+	values, err := jp.FindResults(obj.Object)
 	if err != nil {
-		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj)
+		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj.UnstructuredContent())
 		return map[string]interface{}{}, err
 	}
-	log.Info("results ", values)
+	log.Info("here are the ", "results ", values)
 	return map[string]interface{}{}, errors.New("not implemented")
 }
 
@@ -305,4 +313,33 @@ func (lpr *LockedPatchReconciler) getAPIReourceForGVK(gvk schema.GroupVersionKin
 		}
 	}
 	return res, nil
+}
+
+var jsonRegexp = regexp.MustCompile(`^\{\.?([^{}]+)\}$|^\.?([^{}]+)$`)
+
+// relaxedJSONPathExpression attempts to be flexible with JSONPath expressions, it accepts:
+//   * metadata.name (no leading '.' or curly braces '{...}'
+//   * {metadata.name} (no leading '.')
+//   * .metadata.name (no curly braces '{...}')
+//   * {.metadata.name} (complete expression)
+// And transforms them all into a valid jsonpath expression:
+//   {.metadata.name}
+func relaxedJSONPathExpression(pathExpression string) (string, error) {
+	if len(pathExpression) == 0 {
+		return pathExpression, nil
+	}
+	submatches := jsonRegexp.FindStringSubmatch(pathExpression)
+	if submatches == nil {
+		return "", fmt.Errorf("unexpected path string, expected a 'name1.name2' or '.name1.name2' or '{name1.name2}' or '{.name1.name2}'")
+	}
+	if len(submatches) != 3 {
+		return "", fmt.Errorf("unexpected submatch list: %v", submatches)
+	}
+	var fieldSpec string
+	if len(submatches[1]) != 0 {
+		fieldSpec = submatches[1]
+	} else {
+		fieldSpec = submatches[2]
+	}
+	return fmt.Sprintf("{.%s}", fieldSpec), nil
 }
