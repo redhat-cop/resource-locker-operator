@@ -6,6 +6,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/redhat-cop/operator-utils v0.0.0-20191011134647-d53c2c139d07
 	github.com/spf13/pflag v1.0.3
+	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/tools/gopls v0.1.7 // indirect
 	k8s.io/api v0.0.0-20191031065753-b19d8caf39be
 	k8s.io/apimachinery v0.0.0-20191030190112-bb31b70367b7

@@ -20,9 +20,9 @@ spec:
     - apiVersion: v1
       kind: Namespace
       name: resource-locker-test
-      fieldPath: metadata.name
+      fieldPath: $.metadata.uid
     - apiVersion: v1
       kind: ServiceAccount
       name: default
       namespace: resource-locker-test
-      fieldPath: metadata.uid     
+      fieldPath: $.metadata.uid   

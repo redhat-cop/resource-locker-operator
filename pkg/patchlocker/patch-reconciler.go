@@ -3,7 +3,6 @@ package patchlocker
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
+	yalp "github.com/yalp/jsonpath"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -192,7 +192,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 		log.Error(err, "unable to retrieve", "target", lpr.TargetObjectRef)
 		return reconcile.Result{}, err
 	}
-	sourceMaps := []map[string]interface{}{}
+	sourceMaps := []interface{}{}
 	for _, objref := range lpr.SourceObjectRefs {
 		sourceObj, err := lpr.getReferecedObject(&objref)
 		if err != nil {
@@ -262,33 +262,39 @@ func (lpr *LockedPatchReconciler) getReferecedObject(objref *corev1.ObjectRefere
 	return obj, nil
 }
 
-func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (map[string]interface{}, error) {
+func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (interface{}, error) {
 	if fieldPath == "" {
 		return obj.UnstructuredContent(), nil
 	}
 	// look into this: k8s.io/client-go/util/jsonpath
-	fieldPath, err := relaxedJSONPathExpression(fieldPath)
-	if err != nil {
-		log.Error(err, "unable to relaxively parse ", "fieldPath", fieldPath)
-		return map[string]interface{}{}, err
-	}
+	/* 	fieldPath, err := relaxedJSONPathExpression(fieldPath)
+	   	if err != nil {
+	   		log.Error(err, "unable to relaxively parse ", "fieldPath", fieldPath)
+	   		return map[string]interface{}{}, err
+	   	} */
 	jp := jsonpath.New("fieldPath:" + fieldPath)
-	err = jp.Parse(fieldPath)
+	err := jp.Parse(fieldPath)
 	if err != nil {
 		log.Error(err, "unable to parse ", "fieldPath", fieldPath)
-		return map[string]interface{}{}, err
+		return nil, err
 	}
-	//var buf bytes.Buffer
-	//jp.Execute(&buf, obj)
-	//log.Info("path", "result ", buf.String())
 	log.Info("applying ", "fieldPath ", fieldPath, " to object ", obj.UnstructuredContent())
-	values, err := jp.FindResults(obj.Object)
+	values, err := jp.FindResults(obj.UnstructuredContent())
 	if err != nil {
 		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj.UnstructuredContent())
-		return map[string]interface{}{}, err
+		return nil, err
 	}
 	log.Info("here are the ", "results ", values)
-	return map[string]interface{}{}, errors.New("not implemented")
+
+	results, err := yalp.Read(obj.UnstructuredContent(), fieldPath)
+
+	if err != nil {
+		log.Error(err, "unable to apply yalp", "jsonpath", fieldPath, " to obj ", obj.UnstructuredContent())
+		return nil, err
+	}
+	log.Info("here are the ", "results ", results)
+
+	return results, nil
 }
 
 func (lpr *LockedPatchReconciler) getAPIReourceForGVK(gvk schema.GroupVersionKind) (metav1.APIResource, error) {
