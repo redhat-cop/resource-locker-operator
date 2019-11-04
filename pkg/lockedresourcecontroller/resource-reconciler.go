@@ -5,7 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,13 +47,36 @@ var roleBindingGVK = schema.GroupVersionKind{
 	Kind:    "RoleBinding",
 }
 
-type LockedObjectReconciler struct {
-	Object unstructured.Unstructured
+type LockedResourceReconciler struct {
+	Resource unstructured.Unstructured
 	util.ReconcilerBase
+	status       ResourceStatus
+	statusChange chan<- event.GenericEvent
+	parentObject metav1.Object
 }
 
+type ResourceStatus struct {
+	// Type of deployment condition.
+	Type ResourceConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// A human readable message indicating details about the transition.
+	Message string `json:"message,omitempty"`
+}
+
+type ResourceConditionType string
+
+const (
+	// Enforcing means that the patch has been succesfully reconciled and it's being enforced
+	Enforcing ResourceConditionType = "Enforcing"
+	// Erro means that the patch has not been successfully reconciled and we cannot guarntee that it's being enforced
+	Failure ResourceConditionType = "Failure"
+)
+
 // NewReconciler returns a new reconcile.Reconciler
-func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstructured) (reconcile.Reconciler, error) {
+func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstructured, statusChange chan<- event.GenericEvent, parentObject metav1.Object) (*LockedResourceReconciler, error) {
 	value, ok := object.UnstructuredContent()["spec"]
 	log.Info("NewLockedObjectReconciler called on", "type", object.GetObjectKind().GroupVersionKind().String(), "result", ok, "value", value)
 
@@ -63,25 +88,27 @@ func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstruct
 			!reflect.DeepEqual(object.GetObjectKind().GroupVersionKind(), serviceAccountGVK) {
 			err := errors.New("non-standard resources (without the spec field) are not supported")
 			log.Error(err, "non-standard resources (without the spec field) are not supported", "type", object.GetObjectKind().GroupVersionKind())
-			return &LockedObjectReconciler{}, err
+			return &LockedResourceReconciler{}, err
 		}
 	}
 
 	// TODO create the object is it does not exists
 
-	reconciler := &LockedObjectReconciler{
+	reconciler := &LockedResourceReconciler{
 		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("controller_locked_object_"+GetKeyFromObject(&object))),
-		Object:         object,
+		Resource:       object,
+		statusChange:   statusChange,
+		parentObject:   parentObject,
 	}
 
 	err := reconciler.CreateOrUpdateResource(nil, "", &object)
 	if err != nil {
-		return &LockedObjectReconciler{}, err
+		return &LockedResourceReconciler{}, err
 	}
 
 	controller, err := controller.New("controller_locked_object_"+GetKeyFromObject(&object), mgr, controller.Options{Reconciler: reconciler})
 	if err != nil {
-		return &LockedObjectReconciler{}, err
+		return &LockedResourceReconciler{}, err
 	}
 
 	gvk := object.GetObjectKind().GroupVersionKind()
@@ -94,35 +121,35 @@ func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstruct
 		namespace: object.GetNamespace(),
 	})
 	if err != nil {
-		return &LockedObjectReconciler{}, err
+		return &LockedResourceReconciler{}, err
 	}
 
 	return reconciler, nil
 }
 
-func (lor *LockedObjectReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Info("reconcile called for", "object", GetKeyFromObject(&lor.Object), "request", request)
+func (lor *LockedResourceReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Info("reconcile called for", "object", GetKeyFromObject(&lor.Resource), "request", request)
 	//err := lor.CreateOrUpdateResource(nil, "", &lor.Object)
 
 	// Fetch the  instance
 	//instance := &unstructured.Unstructured{}
-	client, err := lor.GetDynamicClientOnUnstructured(lor.Object)
+	client, err := lor.GetDynamicClientOnUnstructured(lor.Resource)
 	if err != nil {
-		return reconcile.Result{}, err
+		return lor.manageError(err)
 	}
-	instance, err := client.Get(lor.Object.GetName(), v1.GetOptions{})
+	instance, err := client.Get(lor.Resource.GetName(), v1.GetOptions{})
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// if not found we have to recreate it.
-			err = lor.CreateOrUpdateResource(nil, "", &lor.Object)
+			err = lor.CreateOrUpdateResource(nil, "", &lor.Resource)
 			if err != nil {
-				return reconcile.Result{}, err
+				lor.manageError(err)
 			}
-			return reconcile.Result{}, nil
+			return lor.manageSuccess()
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return lor.manageError(err)
 	}
 
 	_, ok := instance.UnstructuredContent()["spec"]
@@ -143,19 +170,19 @@ func (lor *LockedObjectReconciler) Reconcile(request reconcile.Request) (reconci
 			return lor.serviceAccountSpecialHandling(instance)
 		}
 
-		return reconcile.Result{}, errors.New("non-standard resources (without the spec field) are not supported")
+		return lor.manageError(errors.New("non-standard resources (without the spec field) are not supported"))
 	}
 
-	if !reflect.DeepEqual(instance.UnstructuredContent()["spec"], lor.Object.UnstructuredContent()["spec"]) {
-		instance.UnstructuredContent()["spec"] = lor.Object.UnstructuredContent()["spec"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["spec"], lor.Resource.UnstructuredContent()["spec"]) {
+		instance.UnstructuredContent()["spec"] = lor.Resource.UnstructuredContent()["spec"]
 		err = lor.CreateOrUpdateResource(nil, "", instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			return lor.manageError(err)
 		}
-		return reconcile.Result{}, nil
+		return lor.manageSuccess()
 	}
 
-	return reconcile.Result{}, nil
+	return lor.manageSuccess()
 }
 
 func GetKeyFromObject(object *unstructured.Unstructured) string {
@@ -190,14 +217,14 @@ func (p *resourceModifiedPredicate) Delete(e event.DeleteEvent) bool {
 	return false
 }
 
-func (lor *LockedObjectReconciler) secretSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
+func (lor *LockedResourceReconciler) secretSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
 	tobeupdated := false
-	if !reflect.DeepEqual(instance.UnstructuredContent()["data"], lor.Object.UnstructuredContent()["data"]) {
-		instance.UnstructuredContent()["data"] = lor.Object.UnstructuredContent()["data"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["data"], lor.Resource.UnstructuredContent()["data"]) {
+		instance.UnstructuredContent()["data"] = lor.Resource.UnstructuredContent()["data"]
 		tobeupdated = true
 	}
-	if !reflect.DeepEqual(instance.UnstructuredContent()["type"], lor.Object.UnstructuredContent()["type"]) {
-		instance.UnstructuredContent()["type"] = lor.Object.UnstructuredContent()["type"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["type"], lor.Resource.UnstructuredContent()["type"]) {
+		instance.UnstructuredContent()["type"] = lor.Resource.UnstructuredContent()["type"]
 		tobeupdated = true
 	}
 	if tobeupdated {
@@ -209,9 +236,9 @@ func (lor *LockedObjectReconciler) secretSpecialHandling(instance *unstructured.
 	return reconcile.Result{}, nil
 }
 
-func (lor *LockedObjectReconciler) configmapSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
-	if !reflect.DeepEqual(instance.UnstructuredContent()["data"], lor.Object.UnstructuredContent()["data"]) {
-		instance.UnstructuredContent()["data"] = lor.Object.UnstructuredContent()["data"]
+func (lor *LockedResourceReconciler) configmapSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
+	if !reflect.DeepEqual(instance.UnstructuredContent()["data"], lor.Resource.UnstructuredContent()["data"]) {
+		instance.UnstructuredContent()["data"] = lor.Resource.UnstructuredContent()["data"]
 		err := lor.CreateOrUpdateResource(nil, "", instance)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -220,14 +247,14 @@ func (lor *LockedObjectReconciler) configmapSpecialHandling(instance *unstructur
 	return reconcile.Result{}, nil
 }
 
-func (lor *LockedObjectReconciler) roleSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
+func (lor *LockedResourceReconciler) roleSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
 	tobeupdated := false
-	if !reflect.DeepEqual(instance.UnstructuredContent()["rules"], lor.Object.UnstructuredContent()["rules"]) {
-		instance.UnstructuredContent()["rules"] = lor.Object.UnstructuredContent()["rules"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["rules"], lor.Resource.UnstructuredContent()["rules"]) {
+		instance.UnstructuredContent()["rules"] = lor.Resource.UnstructuredContent()["rules"]
 		tobeupdated = true
 	}
-	if !reflect.DeepEqual(instance.UnstructuredContent()["aggregationRule"], lor.Object.UnstructuredContent()["aggregationRule"]) {
-		instance.UnstructuredContent()["aggregationRule"] = lor.Object.UnstructuredContent()["aggregationRule"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["aggregationRule"], lor.Resource.UnstructuredContent()["aggregationRule"]) {
+		instance.UnstructuredContent()["aggregationRule"] = lor.Resource.UnstructuredContent()["aggregationRule"]
 		tobeupdated = true
 	}
 	if tobeupdated {
@@ -239,14 +266,14 @@ func (lor *LockedObjectReconciler) roleSpecialHandling(instance *unstructured.Un
 	return reconcile.Result{}, nil
 }
 
-func (lor *LockedObjectReconciler) roleBindingSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
+func (lor *LockedResourceReconciler) roleBindingSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
 	tobeupdated := false
 	// if reflect.DeepEqual(instance.UnstructuredContent()["roleref"], lor.Object.UnstructuredContent()["roleref"]) {
 	// 	instance.UnstructuredContent()["roleref"] = lor.Object.UnstructuredContent()["roleref"]
 	// 	tobeupdated = true
 	// }
-	if !reflect.DeepEqual(instance.UnstructuredContent()["subjects"], lor.Object.UnstructuredContent()["subjects"]) {
-		instance.UnstructuredContent()["subjects"] = lor.Object.UnstructuredContent()["subjects"]
+	if !reflect.DeepEqual(instance.UnstructuredContent()["subjects"], lor.Resource.UnstructuredContent()["subjects"]) {
+		instance.UnstructuredContent()["subjects"] = lor.Resource.UnstructuredContent()["subjects"]
 		tobeupdated = true
 	}
 	if tobeupdated {
@@ -258,7 +285,41 @@ func (lor *LockedObjectReconciler) roleBindingSpecialHandling(instance *unstruct
 	return reconcile.Result{}, nil
 }
 
-func (lor *LockedObjectReconciler) serviceAccountSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
+func (lor *LockedResourceReconciler) serviceAccountSpecialHandling(instance *unstructured.Unstructured) (reconcile.Result, error) {
 	//service accounts are essentially read only
 	return reconcile.Result{}, nil
+}
+
+func (lor *LockedResourceReconciler) manageError(err error) (reconcile.Result, error) {
+	condition := ResourceStatus{
+		Type:           Failure,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+		Message:        err.Error(),
+	}
+	lor.setStatus(condition)
+	return reconcile.Result{}, err
+}
+
+func (lor *LockedResourceReconciler) manageSuccess() (reconcile.Result, error) {
+	condition := ResourceStatus{
+		Type:           Enforcing,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+	}
+	lor.setStatus(condition)
+	return reconcile.Result{}, nil
+}
+
+func (lor *LockedResourceReconciler) setStatus(status ResourceStatus) {
+	lor.status = status
+	if lor.statusChange != nil {
+		lor.statusChange <- event.GenericEvent{
+			Meta: lor.parentObject,
+		}
+	}
+}
+
+func (lor *LockedResourceReconciler) GetStatus() ResourceStatus {
+	return lor.status
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"text/template"
+	"time"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
@@ -16,13 +17,17 @@ import (
 	"github.com/redhat-cop/resource-locker-operator/pkg/stoppablemanager"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/yaml"
@@ -31,6 +36,36 @@ import (
 const controllerName = "resourcelocker-controller"
 
 var log = logf.Log.WithName(controllerName)
+var statusChange = make(chan event.GenericEvent)
+
+type ReconcileResourceLocker struct {
+	// This client, initialized using mgr.Client() above, is a split client
+	// that reads objects from the cache and writes to the apiserver
+	util.ReconcilerBase
+	ResourceLockers map[string]ResourceLocker
+}
+
+type ResourceLocker struct {
+	LockedResourceReconcilers []lockedresourcecontroller.LockedResourceReconciler
+	LockedPatchReconcilers    []patchlocker.LockedPatchReconciler
+	Manager                   stoppablemanager.StoppableManager
+}
+
+func (r *ResourceLocker) getResources() []unstructured.Unstructured {
+	resources := []unstructured.Unstructured{}
+	for _, reconciler := range r.LockedResourceReconcilers {
+		resources = append(resources, reconciler.Resource)
+	}
+	return resources
+}
+
+func (r *ResourceLocker) getPatches() []patchlocker.Patch {
+	patches := []patchlocker.Patch{}
+	for _, reconciler := range r.LockedPatchReconcilers {
+		patches = append(patches, reconciler.Patch)
+	}
+	return patches
+}
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -60,7 +95,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource ResourceLocker
-	err = c.Watch(&source.Kind{Type: &redhatcopv1alpha1.ResourceLocker{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &redhatcopv1alpha1.ResourceLocker{}}, &handler.EnqueueRequestForObject{}, resourceGenerationOrFinalizerChangedPredicate{})
+	if err != nil {
+		return err
+	}
+
+	// watch for changes in status in the locked resources
+
+	err = c.Watch(
+		&source.Channel{Source: statusChange},
+		&handler.EnqueueRequestForObject{},
+	)
 	if err != nil {
 		return err
 	}
@@ -72,12 +117,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 var _ reconcile.Reconciler = &ReconcileResourceLocker{}
 
 // ReconcileResourceLocker reconciles a ResourceLocker object
-type ReconcileResourceLocker struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	util.ReconcilerBase
-	ResourceLockers map[string]ResourceLocker
-}
 
 // Reconcile reads that state of the cluster for a ResourceLocker object and makes changes based on the state read
 // and what is in the ResourceLocker.Spec
@@ -107,36 +146,46 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 	//TODO manage lifecycle
 
 	//First we build the resource locker corresponding to this instance
-	newResourceLocker, err := r.getResourceLockerFromInstance(instance)
+	// newResourceLocker, err := r.getResourceLockerFromInstance(instance)
+	// if err != nil {
+	// 	reqLogger.Error(err, "Unable to create needed controllers")
+	// 	return r.manageError(instance, err)
+	// }
+
+	newResources, err := getLockedResources(instance)
 	if err != nil {
-		reqLogger.Error(err, "Unable to create needed controllers")
-		return reconcile.Result{}, err
+		return r.ManageError(instance, err)
+	}
+
+	newPatches, err := getPatches(instance)
+	if err != nil {
+		return r.ManageError(instance, err)
 	}
 
 	//then we check if we have already started it before
-	oldResourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
+	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
 
 	if ok {
 		// we check if the content of the resource locker is the same
-		if reflect.DeepEqual(newResourceLocker.LockedResources, oldResourceLocker.LockedResources) && reflect.DeepEqual(newResourceLocker.Patches, oldResourceLocker.Patches) {
+		if reflect.DeepEqual(resourceLocker.getResources(), newResources) && reflect.DeepEqual(resourceLocker.getPatches(), newPatches) {
 			// nothing changed, we can return
-			return reconcile.Result{}, nil
+			//TODO update status
+			return r.manageSuccess(instance)
 		}
 		// here something changed and the oldResourceLocker is still running, so we need to stop it.
-		oldResourceLocker.Manager.Stop()
+		resourceLocker.Manager.Stop()
 	}
 	// if we get here we need to put the newResourceLocker in the map
+	newResourceLocker, err := r.getResourceLockerFromInstance(instance)
+	if err != nil {
+		reqLogger.Error(err, "Unable to create needed controllers")
+		return r.manageError(instance, err)
+	}
 	r.ResourceLockers[getKeyFromInstance(instance)] = *newResourceLocker
 	//then we need to start the manager
 	newResourceLocker.Manager.Start()
 
-	return reconcile.Result{}, nil
-}
-
-type ResourceLocker struct {
-	LockedResources []unstructured.Unstructured
-	Patches         []patchlocker.Patch
-	Manager         stoppablemanager.StoppableManager
+	return r.manageSuccess(instance)
 }
 
 func getKeyFromInstance(instance *redhatcopv1alpha1.ResourceLocker) string {
@@ -182,22 +231,26 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	if err != nil {
 		return &ResourceLocker{}, err
 	}
+	resourceReconcilers := []lockedresourcecontroller.LockedResourceReconciler{}
 	for _, lockedResource := range lockedResources {
-		_, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource)
+		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource, statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
+		resourceReconcilers = append(resourceReconcilers, *reconciler)
 	}
+	patchReconcilers := []patchlocker.LockedPatchReconciler{}
 	for _, patch := range patches {
-		_, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch)
+		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
+		patchReconcilers = append(patchReconcilers, *reconciler)
 	}
 	return &ResourceLocker{
-		LockedResources: lockedResources,
-		Patches:         patches,
-		Manager:         stoppableManager,
+		LockedResourceReconcilers: resourceReconcilers,
+		LockedPatchReconcilers:    patchReconcilers,
+		Manager:                   stoppableManager,
 	}, nil
 }
 
@@ -247,20 +300,24 @@ func (r *ReconcileResourceLocker) getRestConfigFromInstance(instance *redhatcopv
 func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]patchlocker.Patch, error) {
 	patches := []patchlocker.Patch{}
 	for _, patch := range instance.Spec.Patches {
-		template, err := template.New(getPatchName(instance, &patch)).Parse(patch.PatchTemplate)
+		myPatch := patchlocker.Patch{
+			SourceObjectRefs: patch.SourceObjectRefs,
+			TargetObjectRef:  patch.TargetObjectRef,
+			PatchType:        patch.PatchType,
+			PatchTemplate:    patch.PatchTemplate}
+
+		template, err := template.New(getPatchName(instance, &myPatch)).Parse(patch.PatchTemplate)
 		if err != nil {
 			log.Error(err, "unable to parse ", "template", patch.PatchTemplate)
 			return []patchlocker.Patch{}, err
 		}
-		patches = append(patches, patchlocker.Patch{
-			Patch:    patch,
-			Template: *template,
-		})
+		myPatch.Template = *template
+		patches = append(patches, myPatch)
 	}
 	return patches, nil
 }
 
-func getPatchName(instance *redhatcopv1alpha1.ResourceLocker, patch *v1alpha1.Patch) string {
+func getPatchName(instance *redhatcopv1alpha1.ResourceLocker, patch *patchlocker.Patch) string {
 	return types.NamespacedName{
 		Name:      instance.GetName(),
 		Namespace: instance.GetNamespace(),
@@ -268,4 +325,107 @@ func getPatchName(instance *redhatcopv1alpha1.ResourceLocker, patch *v1alpha1.Pa
 		Name:      patch.TargetObjectRef.Name,
 		Namespace: patch.TargetObjectRef.Namespace,
 	}.String()
+}
+
+func getResourceName(obj *unstructured.Unstructured) string {
+	return schema.FromAPIVersionAndKind(obj.GetAPIVersion(), obj.GetKind()).String() + "-" + types.NamespacedName{
+		Name:      obj.GetName(),
+		Namespace: obj.GetNamespace(),
+	}.String()
+}
+
+type resourceGenerationOrFinalizerChangedPredicate struct {
+	predicate.Funcs
+}
+
+// Update implements default UpdateEvent filter for validating resource version change
+func (resourceGenerationOrFinalizerChangedPredicate) Update(e event.UpdateEvent) bool {
+	if e.MetaOld == nil {
+		log.Error(nil, "UpdateEvent has no old metadata", "event", e)
+		return false
+	}
+	if e.ObjectOld == nil {
+		log.Error(nil, "GenericEvent has no old runtime object to update", "event", e)
+		return false
+	}
+	if e.ObjectNew == nil {
+		log.Error(nil, "GenericEvent has no new runtime object for update", "event", e)
+		return false
+	}
+	if e.MetaNew == nil {
+		log.Error(nil, "UpdateEvent has no new metadata", "event", e)
+		return false
+	}
+	if e.MetaNew.GetGeneration() == e.MetaOld.GetGeneration() && reflect.DeepEqual(e.MetaNew.GetFinalizers(), e.MetaOld.GetFinalizers()) {
+		return false
+	}
+	return true
+}
+
+func (r *ReconcileResourceLocker) manageError(instance *redhatcopv1alpha1.ResourceLocker, err1 error) (reconcile.Result, error) {
+	status := v1alpha1.ResourceLockerStatus{
+		Type:           v1alpha1.Failure,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+		Message:        err1.Error(),
+	}
+	instance.Status = status
+	r.addResourcesAndPacthesStatuses(instance)
+	err := r.GetClient().Status().Update(context.Background(), instance)
+	if err != nil {
+		log.Error(err, "unable to update status")
+		return reconcile.Result{
+			RequeueAfter: time.Second,
+			Requeue:      true,
+		}, nil
+	}
+	return reconcile.Result{}, err1
+}
+
+func (r *ReconcileResourceLocker) manageSuccess(instance *redhatcopv1alpha1.ResourceLocker) (reconcile.Result, error) {
+	status := v1alpha1.ResourceLockerStatus{
+		Type:           v1alpha1.Success,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+	}
+	instance.Status = status
+	r.addResourcesAndPacthesStatuses(instance)
+	err := r.GetClient().Status().Update(context.Background(), instance)
+	if err != nil {
+		log.Error(err, "unable to update status")
+		return reconcile.Result{
+			RequeueAfter: time.Second,
+			Requeue:      true,
+		}, nil
+	}
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileResourceLocker) addResourcesAndPacthesStatuses(instance *redhatcopv1alpha1.ResourceLocker) {
+	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
+	if !ok {
+		return
+	}
+	resourceStatuses := []v1alpha1.LockingStatus{}
+	for _, reconciler := range resourceLocker.LockedResourceReconcilers {
+		resourceStatuses = append(resourceStatuses, v1alpha1.LockingStatus{
+			Name:           getResourceName(&reconciler.Resource),
+			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
+			Status:         reconciler.GetStatus().Status,
+			LastUpdateTime: reconciler.GetStatus().LastUpdateTime,
+			Message:        reconciler.GetStatus().Message,
+		})
+	}
+	instance.Status.ResourceStatuses = resourceStatuses
+	patchStatuses := []v1alpha1.LockingStatus{}
+	for _, reconciler := range resourceLocker.LockedPatchReconcilers {
+		patchStatuses = append(patchStatuses, v1alpha1.LockingStatus{
+			Name:           getPatchName(instance, &reconciler.Patch),
+			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
+			Status:         reconciler.GetStatus().Status,
+			LastUpdateTime: reconciler.GetStatus().LastUpdateTime,
+			Message:        reconciler.GetStatus().Message,
+		})
+	}
+	instance.Status.PatchStatuses = patchStatuses
 }

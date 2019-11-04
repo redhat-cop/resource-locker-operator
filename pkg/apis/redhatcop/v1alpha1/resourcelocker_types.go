@@ -59,10 +59,57 @@ type Patch struct {
 // ResourceLockerStatus defines the observed state of ResourceLocker
 // +k8s:openapi-gen=true
 type ResourceLockerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	// Type of deployment condition.
+	// +kubebuilder:validation:Enum="Success;Failure"
+	// +kubebuilder:validation:Required
+	Type ConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum="True;False,Unknown"
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	// +kubebuilder:validation:Optional
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +kubebuilder:validation:Optional
+	Message string `json:"message,omitempty"`
+	// +kubebuilder:validation:Optional
+	ResourceStatuses []LockingStatus `json:"resourceStatuses,omitempty"`
+	// +kubebuilder:validation:Optional
+	PatchStatuses []LockingStatus `json:"patchStatuses,omitempty"`
 }
+
+// +k8s:openapi-gen=true
+type LockingStatus struct {
+	// the name of the locked configuration
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// Type of deployment condition.
+	// +kubebuilder:validation:Enum="Enforcing;Failure"
+	// +kubebuilder:validation:Required
+	Type ConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum="True;False,Unknown"
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	// +kubebuilder:validation:Optional
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +kubebuilder:validation:Optional
+	Message string `json:"message,omitempty"`
+}
+
+type ConditionType string
+
+const (
+	// Enforcing means that the resource or patch has been succesfully reconciled and it's being enforced
+	Enforcing ConditionType = "Enforcing"
+	// Failure means that the resource or patch has not been successfully reconciled and we cannot guarntee that it's being enforced
+	Failure ConditionType = "Failure"
+	// Success means that the instance has been successfully reconciled
+	Success ConditionType = "Success"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

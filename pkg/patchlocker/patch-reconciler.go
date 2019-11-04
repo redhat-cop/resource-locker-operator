@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
-	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	yalp "github.com/yalp/jsonpath"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,23 +35,51 @@ var controllername = "controller_patchlocker"
 var log = logf.Log.WithName(controllername)
 
 type Patch struct {
-	v1alpha1.Patch
+	SourceObjectRefs []corev1.ObjectReference
+	TargetObjectRef  corev1.ObjectReference
+	PatchType        types.PatchType
+	PatchTemplate    string
 	template.Template
 }
+
+type PatchStatus struct {
+	// Type of deployment condition.
+	Type PatchConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// A human readable message indicating details about the transition.
+	Message string `json:"message,omitempty"`
+}
+
+type PatchConditionType string
+
+const (
+	// Enforcing means that the patch has been succesfully reconciled and it's being enforced
+	Enforcing PatchConditionType = "Enforcing"
+	// Erro means that the patch has not been successfully reconciled and we cannot guarntee that it's being enforced
+	Failure PatchConditionType = "Failure"
+)
 
 type LockedPatchReconciler struct {
 	util.ReconcilerBase
 	Patch
+	status       PatchStatus
+	statusChange chan<- event.GenericEvent
+	parentObject metav1.Object
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewPatchLockerReconciler(mgr manager.Manager, patch Patch) (reconcile.Reconciler, error) {
+func NewPatchLockerReconciler(mgr manager.Manager, patch Patch, statusChange chan<- event.GenericEvent, parentObject metav1.Object) (*LockedPatchReconciler, error) {
 
 	// TODO create the object is it does not exists
 
 	reconciler := &LockedPatchReconciler{
 		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllername+"_"+getKeyFromPatch(patch))),
 		Patch:          patch,
+		statusChange:   statusChange,
+		parentObject:   parentObject,
 	}
 
 	controller, err := controller.New(controllername+"_"+getKeyFromPatch(patch), mgr, controller.Options{Reconciler: reconciler})
@@ -190,19 +217,19 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 	targetObj, err := lpr.getReferecedObject(&lpr.TargetObjectRef)
 	if err != nil {
 		log.Error(err, "unable to retrieve", "target", lpr.TargetObjectRef)
-		return reconcile.Result{}, err
+		return lpr.manageError(err)
 	}
 	sourceMaps := []interface{}{}
 	for _, objref := range lpr.SourceObjectRefs {
 		sourceObj, err := lpr.getReferecedObject(&objref)
 		if err != nil {
 			log.Error(err, "unable to retrieve", "source", sourceObj)
-			return reconcile.Result{}, err
+			return lpr.manageError(err)
 		}
 		sourceMap, err := getSubMapFromObject(sourceObj, objref.FieldPath)
 		if err != nil {
 			log.Error(err, "unable to retrieve", "field", objref.FieldPath, "from object", sourceObj)
-			return reconcile.Result{}, err
+			return lpr.manageError(err)
 		}
 		sourceMaps = append(sourceMaps, sourceMap)
 	}
@@ -212,7 +239,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 	err = lpr.Template.Execute(&b, sourceMaps)
 	if err != nil {
 		log.Error(err, "unable to process ", "template ", lpr.Template, "parameters", sourceMaps)
-		return reconcile.Result{}, err
+		return lpr.manageError(err)
 	}
 	log.Info("processed", "template", b.String())
 	// convert the patch to from yaml to json
@@ -220,7 +247,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 
 	if err != nil {
 		log.Error(err, "unable to convert to json", "processed template", b.String())
-		return reconcile.Result{}, err
+		return lpr.manageError(err)
 	}
 	log.Info("json", "patch", string(bb))
 	//apply the patch
@@ -231,10 +258,10 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 
 	if err != nil {
 		log.Error(err, "unable to apply ", "patch", patch, "on target", targetObj)
-		return reconcile.Result{}, err
+		return lpr.manageError(err)
 	}
 
-	return reconcile.Result{}, nil
+	return lpr.manageSuccess()
 }
 
 func (lpr *LockedPatchReconciler) getReferecedObject(objref *corev1.ObjectReference) (*unstructured.Unstructured, error) {
@@ -348,4 +375,38 @@ func relaxedJSONPathExpression(pathExpression string) (string, error) {
 		fieldSpec = submatches[2]
 	}
 	return fmt.Sprintf("{.%s}", fieldSpec), nil
+}
+
+func (lpr *LockedPatchReconciler) manageError(err error) (reconcile.Result, error) {
+	condition := PatchStatus{
+		Type:           Failure,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+		Message:        err.Error(),
+	}
+	lpr.setStatus(condition)
+	return reconcile.Result{}, err
+}
+
+func (lpr *LockedPatchReconciler) manageSuccess() (reconcile.Result, error) {
+	condition := PatchStatus{
+		Type:           Enforcing,
+		Status:         corev1.ConditionTrue,
+		LastUpdateTime: metav1.Now(),
+	}
+	lpr.setStatus(condition)
+	return reconcile.Result{}, nil
+}
+
+func (lpr *LockedPatchReconciler) setStatus(status PatchStatus) {
+	lpr.status = status
+	if lpr.statusChange != nil {
+		lpr.statusChange <- event.GenericEvent{
+			Meta: lpr.parentObject,
+		}
+	}
+}
+
+func (lpr *LockedPatchReconciler) GetStatus() PatchStatus {
+	return lpr.status
 }

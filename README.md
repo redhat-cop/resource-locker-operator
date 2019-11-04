@@ -63,7 +63,8 @@ spec:
 
 I this example we lock in a ResourceQuota configuration. Resource must be fully specified (i.e. no templating is allowed and all the mandatory fields must be initialized).
 Resources created this ways are allowed to drift from the initial created state only in the `metadata` and `status` section. If drift occurs for in the `spec`, the operator will immediately reset the resource.
-Special handling is in place for legacy `v1` objects that do not comply with the `metadata/spec/status` convectional structure such as: `ServiceAccount`, `ConfigMap`, `Secret`, `Role`, `ClusterRole`. CRDs that do not comply with the `metadata/spec/status` structure will cause the operator to error out.
+
+Special handling is in place for legacy `v1` objects that do not comply with the `metadata/spec/status` conventional structure such as: `ServiceAccount`, `ConfigMap`, `Secret`, `Role`, `ClusterRole`. CRDs that do not comply with the `metadata/spec/status` structure will cause the operator to error out.
 
 ## Resource Patch Locking
 
@@ -156,3 +157,11 @@ git push upstream <version>
 ```
 
 use this version format: vM.m.z
+
+## Roadmap
+
+* Add status and error management
+* Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).
+  * Improve event filter to consider exclusions.
+  * Same logic for objects referenced in patches which use the fieldPath.
+* Add ability to watch on specific objects, not just types.  

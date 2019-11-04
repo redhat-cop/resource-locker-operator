@@ -1,6 +1,7 @@
 module github.com/redhat-cop/resource-locker-operator
 
 require (
+	github.com/Furduhlutur/yar v0.0.0-20191029142934-8039e70e1aca // indirect
 	github.com/go-openapi/spec v0.19.2
 	github.com/operator-framework/operator-sdk v0.11.1-0.20191014155558-888dde512025
 	github.com/pkg/errors v0.8.1
