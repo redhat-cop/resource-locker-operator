@@ -11,10 +11,60 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.LockingStatus":        schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Patch":                schema_pkg_apis_redhatcop_v1alpha1_Patch(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLocker":       schema_pkg_apis_redhatcop_v1alpha1_ResourceLocker(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLockerSpec":   schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLockerStatus": schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerStatus(ref),
+	}
+}
+
+func schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "the name of the locked configuration",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type of deployment condition. // +kubebuilder:validation:Enum=\"Enforcing;Failure\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status of the condition, one of True, False, Unknown. // +kubebuilder:validation:Enum=\"True;False;Unknown\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastUpdateTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this condition was updated.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human readable message indicating details about the transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "status"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -179,7 +229,73 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerStatus(ref common.Referenc
 			SchemaProps: spec.SchemaProps{
 				Description: "ResourceLockerStatus defines the observed state of ResourceLocker",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type of deployment condition. // +kubebuilder:validation:Enum=\"Success;Failure\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status of the condition, one of True, False, Unknown. // +kubebuilder:validation:Enum=\"True;False;Unknown\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastUpdateTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this condition was updated.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human readable message indicating details about the transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceStatuses": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.LockingStatus"),
+									},
+								},
+							},
+						},
+					},
+					"patchStatuses": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.LockingStatus"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"type", "status"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.LockingStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }

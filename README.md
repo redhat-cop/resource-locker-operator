@@ -161,6 +161,7 @@ use this version format: vM.m.z
 ## Roadmap
 
 * Add status and error management
+* Initialization/Finalization
 * Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).
   * Improve event filter to consider exclusions.
   * Same logic for objects referenced in patches which use the fieldPath.

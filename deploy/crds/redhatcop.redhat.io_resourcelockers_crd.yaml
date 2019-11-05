@@ -153,6 +153,76 @@ spec:
           type: object
         status:
           description: ResourceLockerStatus defines the observed state of ResourceLocker
+          properties:
+            lastUpdateTime:
+              description: The last time this condition was updated.
+              format: date-time
+              type: string
+            message:
+              description: A human readable message indicating details about the transition.
+              type: string
+            patchStatuses:
+              items:
+                properties:
+                  lastUpdateTime:
+                    description: The last time this condition was updated.
+                    format: date-time
+                    type: string
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  name:
+                    description: the name of the locked configuration
+                    type: string
+                  status:
+                    description: Status of the condition, one of True, False, Unknown.
+                      // +kubebuilder:validation:Enum="True;False;Unknown"
+                    type: string
+                  type:
+                    description: Type of deployment condition. // +kubebuilder:validation:Enum="Enforcing;Failure"
+                    type: string
+                required:
+                - name
+                - status
+                type: object
+              type: array
+            resourceStatuses:
+              items:
+                properties:
+                  lastUpdateTime:
+                    description: The last time this condition was updated.
+                    format: date-time
+                    type: string
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  name:
+                    description: the name of the locked configuration
+                    type: string
+                  status:
+                    description: Status of the condition, one of True, False, Unknown.
+                      // +kubebuilder:validation:Enum="True;False;Unknown"
+                    type: string
+                  type:
+                    description: Type of deployment condition. // +kubebuilder:validation:Enum="Enforcing;Failure"
+                    type: string
+                required:
+                - name
+                - status
+                type: object
+              type: array
+            status:
+              description: Status of the condition, one of True, False, Unknown. //
+                +kubebuilder:validation:Enum="True;False;Unknown"
+              type: string
+            type:
+              description: Type of deployment condition. // +kubebuilder:validation:Enum="Success;Failure"
+              type: string
+          required:
+          - status
+          - type
           type: object
       type: object
   version: v1alpha1

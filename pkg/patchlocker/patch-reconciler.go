@@ -399,8 +399,11 @@ func (lpr *LockedPatchReconciler) manageSuccess() (reconcile.Result, error) {
 }
 
 func (lpr *LockedPatchReconciler) setStatus(status PatchStatus) {
+	log.Info("setting ", "status", status)
 	lpr.status = status
+	log.Info("status change", "channel", lpr.statusChange)
 	if lpr.statusChange != nil {
+		log.Info("sending event")
 		lpr.statusChange <- event.GenericEvent{
 			Meta: lpr.parentObject,
 		}

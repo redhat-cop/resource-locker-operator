@@ -36,13 +36,15 @@ import (
 const controllerName = "resourcelocker-controller"
 
 var log = logf.Log.WithName(controllerName)
-var statusChange = make(chan event.GenericEvent)
+
+//var statusChange = make(chan event.GenericEvent)
 
 type ReconcileResourceLocker struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	util.ReconcilerBase
 	ResourceLockers map[string]ResourceLocker
+	statusChange    chan event.GenericEvent
 }
 
 type ResourceLocker struct {
@@ -79,15 +81,16 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) *ReconcileResourceLocker {
 	return &ReconcileResourceLocker{
 		ReconcilerBase:  util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
 		ResourceLockers: map[string]ResourceLocker{},
+		statusChange:    make(chan event.GenericEvent),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileResourceLocker) error {
 	// Create a new controller
 	c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -103,7 +106,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// watch for changes in status in the locked resources
 
 	err = c.Watch(
-		&source.Channel{Source: statusChange},
+		&source.Channel{Source: r.statusChange},
 		&handler.EnqueueRequestForObject{},
 	)
 	if err != nil {
@@ -167,12 +170,14 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 
 	if ok {
 		// we check if the content of the resource locker is the same
+		reqLogger.Info("resourceLocker exists")
 		if reflect.DeepEqual(resourceLocker.getResources(), newResources) && reflect.DeepEqual(resourceLocker.getPatches(), newPatches) {
 			// nothing changed, we can return
-			//TODO update status
+			reqLogger.Info("existing locked resources are the same as desired locked resources")
 			return r.manageSuccess(instance)
 		}
 		// here something changed and the oldResourceLocker is still running, so we need to stop it.
+		reqLogger.Info("existing locked resources are NOT the same as desired locked resources, stopping manager...")
 		resourceLocker.Manager.Stop()
 	}
 	// if we get here we need to put the newResourceLocker in the map
@@ -183,6 +188,7 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 	}
 	r.ResourceLockers[getKeyFromInstance(instance)] = *newResourceLocker
 	//then we need to start the manager
+	reqLogger.Info("created new manager, starting it...")
 	newResourceLocker.Manager.Start()
 
 	return r.manageSuccess(instance)
@@ -233,7 +239,7 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	}
 	resourceReconcilers := []lockedresourcecontroller.LockedResourceReconciler{}
 	for _, lockedResource := range lockedResources {
-		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource, statusChange, instance)
+		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource, r.statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
@@ -241,7 +247,7 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	}
 	patchReconcilers := []patchlocker.LockedPatchReconciler{}
 	for _, patch := range patches {
-		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, statusChange, instance)
+		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, r.statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
@@ -392,7 +398,7 @@ func (r *ReconcileResourceLocker) manageSuccess(instance *redhatcopv1alpha1.Reso
 	r.addResourcesAndPacthesStatuses(instance)
 	err := r.GetClient().Status().Update(context.Background(), instance)
 	if err != nil {
-		log.Error(err, "unable to update status")
+		log.Error(err, "unable to update status", "for instance", instance)
 		return reconcile.Result{
 			RequeueAfter: time.Second,
 			Requeue:      true,
@@ -411,21 +417,45 @@ func (r *ReconcileResourceLocker) addResourcesAndPacthesStatuses(instance *redha
 		resourceStatuses = append(resourceStatuses, v1alpha1.LockingStatus{
 			Name:           getResourceName(&reconciler.Resource),
 			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
-			Status:         reconciler.GetStatus().Status,
-			LastUpdateTime: reconciler.GetStatus().LastUpdateTime,
+			Status:         getStatusOrUnknown(reconciler.GetStatus().Status),
+			LastUpdateTime: getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
 			Message:        reconciler.GetStatus().Message,
 		})
 	}
 	instance.Status.ResourceStatuses = resourceStatuses
 	patchStatuses := []v1alpha1.LockingStatus{}
 	for _, reconciler := range resourceLocker.LockedPatchReconcilers {
+		log.Info("retrived", "status", reconciler.GetStatus())
 		patchStatuses = append(patchStatuses, v1alpha1.LockingStatus{
 			Name:           getPatchName(instance, &reconciler.Patch),
 			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
-			Status:         reconciler.GetStatus().Status,
-			LastUpdateTime: reconciler.GetStatus().LastUpdateTime,
+			Status:         getStatusOrUnknown(reconciler.GetStatus().Status),
+			LastUpdateTime: getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
 			Message:        reconciler.GetStatus().Message,
 		})
 	}
 	instance.Status.PatchStatuses = patchStatuses
+}
+
+func getStatusOrUnknown(status corev1.ConditionStatus) corev1.ConditionStatus {
+	if status == "" {
+		return corev1.ConditionUnknown
+	}
+	return status
+}
+
+func getTimeOrNow(time metav1.Time) metav1.Time {
+	if time.IsZero() {
+		return metav1.Now()
+	}
+	return time
+}
+
+type genericEventPredicateLogger struct {
+	predicate.Funcs
+}
+
+func (gep genericEventPredicateLogger) Generic(e event.GenericEvent) bool {
+	log.Info("statusUpdate channel Generic called", "event", e)
+	return true
 }
