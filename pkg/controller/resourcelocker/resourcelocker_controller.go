@@ -48,8 +48,8 @@ type ReconcileResourceLocker struct {
 }
 
 type ResourceLocker struct {
-	LockedResourceReconcilers []lockedresourcecontroller.LockedResourceReconciler
-	LockedPatchReconcilers    []patchlocker.LockedPatchReconciler
+	LockedResourceReconcilers []*lockedresourcecontroller.LockedResourceReconciler
+	LockedPatchReconcilers    []*patchlocker.LockedPatchReconciler
 	Manager                   stoppablemanager.StoppableManager
 }
 
@@ -237,21 +237,21 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	if err != nil {
 		return &ResourceLocker{}, err
 	}
-	resourceReconcilers := []lockedresourcecontroller.LockedResourceReconciler{}
+	resourceReconcilers := []*lockedresourcecontroller.LockedResourceReconciler{}
 	for _, lockedResource := range lockedResources {
 		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource, r.statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
-		resourceReconcilers = append(resourceReconcilers, *reconciler)
+		resourceReconcilers = append(resourceReconcilers, reconciler)
 	}
-	patchReconcilers := []patchlocker.LockedPatchReconciler{}
+	patchReconcilers := []*patchlocker.LockedPatchReconciler{}
 	for _, patch := range patches {
 		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, r.statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
-		patchReconcilers = append(patchReconcilers, *reconciler)
+		patchReconcilers = append(patchReconcilers, reconciler)
 	}
 	return &ResourceLocker{
 		LockedResourceReconcilers: resourceReconcilers,
