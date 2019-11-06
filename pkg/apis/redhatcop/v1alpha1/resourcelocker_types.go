@@ -60,12 +60,12 @@ type Patch struct {
 // +k8s:openapi-gen=true
 type ResourceLockerStatus struct {
 	// Type of deployment condition.
-	/*// +kubebuilder:validation:Enum="Success;Failure"*/
+	// +kubebuilder:validation:Enum=Success;Failure
 	// +kubebuilder:validation:Required
 	Type ConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
 	// +kubebuilder:validation:Required
-	/*// +kubebuilder:validation:Enum="True;False;Unknown"*/
+	// +kubebuilder:validation:Enum=True;False;Unknown
 	Status corev1.ConditionStatus `json:"status"`
 	// The last time this condition was updated.
 	// +kubebuilder:validation:Optional
@@ -87,12 +87,12 @@ type LockingStatus struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 	// Type of deployment condition.
-	/*// +kubebuilder:validation:Enum="Enforcing;Failure"*/
+	// +kubebuilder:validation:Enum=Enforcing;Failure
 	// +kubebuilder:validation:Optional
 	Type ConditionType `json:"type,omitempty"`
 	// Status of the condition, one of True, False, Unknown.
 	// +kubebuilder:validation:Required
-	/*// +kubebuilder:validation:Enum="True;False;Unknown"*/
+	// +kubebuilder:validation:Enum=True;False;Unknown
 	Status corev1.ConditionStatus `json:"status"`
 	// The last time this condition was updated.
 	// +kubebuilder:validation:Optional

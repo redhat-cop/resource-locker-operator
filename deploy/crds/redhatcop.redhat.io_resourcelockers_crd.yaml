@@ -177,10 +177,16 @@ spec:
                     type: string
                   status:
                     description: Status of the condition, one of True, False, Unknown.
-                      // +kubebuilder:validation:Enum="True;False;Unknown"
+                    enum:
+                    - "True"
+                    - "False"
+                    - Unknown
                     type: string
                   type:
-                    description: Type of deployment condition. // +kubebuilder:validation:Enum="Enforcing;Failure"
+                    description: Type of deployment condition.
+                    enum:
+                    - Enforcing
+                    - Failure
                     type: string
                 required:
                 - name
@@ -203,10 +209,16 @@ spec:
                     type: string
                   status:
                     description: Status of the condition, one of True, False, Unknown.
-                      // +kubebuilder:validation:Enum="True;False;Unknown"
+                    enum:
+                    - "True"
+                    - "False"
+                    - Unknown
                     type: string
                   type:
-                    description: Type of deployment condition. // +kubebuilder:validation:Enum="Enforcing;Failure"
+                    description: Type of deployment condition.
+                    enum:
+                    - Enforcing
+                    - Failure
                     type: string
                 required:
                 - name
@@ -214,11 +226,17 @@ spec:
                 type: object
               type: array
             status:
-              description: Status of the condition, one of True, False, Unknown. //
-                +kubebuilder:validation:Enum="True;False;Unknown"
+              description: Status of the condition, one of True, False, Unknown.
+              enum:
+              - "True"
+              - "False"
+              - Unknown
               type: string
             type:
-              description: Type of deployment condition. // +kubebuilder:validation:Enum="Success;Failure"
+              description: Type of deployment condition.
+              enum:
+              - Success
+              - Failure
               type: string
           required:
           - status

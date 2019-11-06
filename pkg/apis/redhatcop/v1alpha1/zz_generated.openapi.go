@@ -34,14 +34,14 @@ func schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref common.ReferenceCallba
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type of deployment condition. // +kubebuilder:validation:Enum=\"Enforcing;Failure\"",
+							Description: "Type of deployment condition.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Status of the condition, one of True, False, Unknown. // +kubebuilder:validation:Enum=\"True;False;Unknown\"",
+							Description: "Status of the condition, one of True, False, Unknown.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -232,14 +232,14 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerStatus(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type of deployment condition. // +kubebuilder:validation:Enum=\"Success;Failure\"",
+							Description: "Type of deployment condition.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Status of the condition, one of True, False, Unknown. // +kubebuilder:validation:Enum=\"True;False;Unknown\"",
+							Description: "Status of the condition, one of True, False, Unknown.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
