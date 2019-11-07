@@ -22,15 +22,15 @@ type ResourceLockerSpec struct {
 	// +listType=atomic
 	Resources []runtime.RawExtension `json:"resources,omitempty"`
 
-	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="{Name:default}"
-	ServiceAccountRef corev1.LocalObjectReference `json:"serviceAccountRef,omitempty"`
-
 	// Patches is a list of pacthes that should be encforced at runtime.
 	// +kubebuilder:validation:Optional
 	// +listType=atomic
 	Patches []Patch `json:"patches,omitempty"`
+
+	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="{Name:default}"
+	ServiceAccountRef corev1.LocalObjectReference `json:"serviceAccountRef,omitempty"`
 }
 
 // Patch describe a pacth to be enforced at runtim

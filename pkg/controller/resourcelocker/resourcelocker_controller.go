@@ -146,14 +146,38 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	//TODO manage lifecycle
+	if ok, err := r.IsValid(instance); !ok {
+		return r.ManageError(instance, err)
+	}
+	// TODO
+	if ok := r.IsInitialized(instance); !ok {
+		err := r.GetClient().Update(context.TODO(), instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
 
-	//First we build the resource locker corresponding to this instance
-	// newResourceLocker, err := r.getResourceLockerFromInstance(instance)
-	// if err != nil {
-	// 	reqLogger.Error(err, "Unable to create needed controllers")
-	// 	return r.manageError(instance, err)
-	// }
+	if util.IsBeingDeleted(instance) {
+		if !util.HasFinalizer(instance, controllerName) {
+			return reconcile.Result{}, nil
+		}
+		err := r.manageCleanUpLogic(instance)
+		if err != nil {
+			log.Error(err, "unable to delete instance", "instance", instance)
+			return r.ManageError(instance, err)
+		}
+		util.RemoveFinalizer(instance, controllerName)
+		err = r.GetClient().Update(context.TODO(), instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// TODO manage lifecycle
 
 	newResources, err := getLockedResources(instance)
 	if err != nil {
@@ -180,6 +204,14 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("existing locked resources are NOT the same as desired locked resources, stopping manager...")
 		resourceLocker.Manager.Stop()
 	}
+
+	// before we start the manager, when no reconsiler is running, we delete the any possibly removed resource
+	err = r.deleteRemovedResources(instance)
+	if err != nil {
+		reqLogger.Error(err, "Unable to delete removed resources")
+		return r.manageError(instance, err)
+	}
+
 	// if we get here we need to put the newResourceLocker in the map
 	newResourceLocker, err := r.getResourceLockerFromInstance(instance)
 	if err != nil {
@@ -187,6 +219,7 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		return r.manageError(instance, err)
 	}
 	r.ResourceLockers[getKeyFromInstance(instance)] = *newResourceLocker
+
 	//then we need to start the manager
 	reqLogger.Info("created new manager, starting it...")
 	newResourceLocker.Manager.Start()
@@ -218,6 +251,25 @@ func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructu
 		objs = append(objs, obj)
 	}
 	return objs, nil
+}
+
+func (r *ReconcileResourceLocker) isInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {
+	needsUpdate := false
+	if instance.Spec.ServiceAccountRef.Name == "" {
+		instance.Spec.ServiceAccountRef.Name = "default"
+		needsUpdate = true
+	}
+	for i := range instance.Spec.Patches {
+		if instance.Spec.Patches[i].PatchType == "" {
+			instance.Spec.Patches[i].PatchType = types.StrategicMergePatchType
+			needsUpdate = true
+		}
+	}
+	if !util.HasFinalizer(instance, controllerName) {
+		util.AddFinalizer(instance, controllerName)
+		needsUpdate = true
+	}
+	return needsUpdate
 }
 
 func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*ResourceLocker, error) {
@@ -386,6 +438,86 @@ func (r *ReconcileResourceLocker) manageError(instance *redhatcopv1alpha1.Resour
 		}, nil
 	}
 	return reconcile.Result{}, err1
+}
+
+// delete removed resources. This is a best effort implelemtnation for now.
+// we use the last "kubectl.kubernetes.io/last-applied-configuration" annotation to copare and see if resources were deleted
+// this seems the best we can do without using an external storage
+// we ignore patcher because we can't undo them
+func (r *ReconcileResourceLocker) deleteRemovedResources(instance *redhatcopv1alpha1.ResourceLocker) error {
+	lastAppliedObjs, err := getLastAppliedResources(instance)
+	if err != nil {
+		lastAppliedObjs = []unstructured.Unstructured{}
+	}
+	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
+	if !ok {
+		return nil
+	}
+	currentObjs := resourceLocker.getResources()
+	desiredObj, err := getLockedResources(instance)
+	if err != nil {
+		return err
+	}
+	toBeDeleted := leftOuterJoin(lastAppliedObjs, desiredObj)
+	toBeDeleted = append(toBeDeleted, leftOuterJoin(currentObjs, desiredObj)...)
+	for _, obj := range toBeDeleted {
+		err := r.DeleteResource(&obj)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+const lastAppliedAnnotation = "kubectl.kubernetes.io/last-applied-configuration"
+
+func getLastAppliedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructured.Unstructured, error) {
+	lastApplied, ok := instance.GetAnnotations()[lastAppliedAnnotation]
+	if !ok {
+		return []unstructured.Unstructured{}, nil
+	}
+	obj := redhatcopv1alpha1.ResourceLocker{}
+	err := json.Unmarshal([]byte(lastApplied), &obj)
+	if err != nil {
+		return []unstructured.Unstructured{}, err
+	}
+	return getLockedResources(&obj)
+
+}
+
+func sameObj(left unstructured.Unstructured, right unstructured.Unstructured) bool {
+	return left.GetName() == right.GetName() &&
+		left.GetNamespace() == right.GetNamespace() &&
+		left.GetObjectKind().GroupVersionKind().GroupKind() == right.GetObjectKind().GroupVersionKind().GroupKind()
+}
+
+func leftOuterJoin(left []unstructured.Unstructured, right []unstructured.Unstructured) []unstructured.Unstructured {
+	res := []unstructured.Unstructured{}
+	for _, leftObj := range left {
+		for _, rightObj := range right {
+			if sameObj(leftObj, rightObj) {
+				res = append(res, leftObj)
+			}
+		}
+	}
+	return res
+}
+
+// manageCleanupLogic delete resources. We don't touch pacthes because we cannot undo them.
+func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1.ResourceLocker) error {
+	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
+	if !ok {
+		return nil
+	}
+	for _, obj := range resourceLocker.getResources() {
+		err := r.DeleteResource(&obj)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *ReconcileResourceLocker) manageSuccess(instance *redhatcopv1alpha1.ResourceLocker) (reconcile.Result, error) {

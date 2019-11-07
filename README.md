@@ -33,7 +33,7 @@ It contains:
 
 * `resources`: representing an array of resources
 * `patches`: representing an array of patches
-* `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches.
+* `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to :`default`
 
 For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
 
@@ -109,6 +109,7 @@ A patch is defined by the following:
   * `application/merge-patch+json`
   * `application/strategic-merge-patch+json`
   * `application/apply-patch+yaml`
+  If not specified the patchType will be defaulted to: `application/strategic-merge-patch+json`
 
 ## Multitenancy
 
@@ -123,6 +124,12 @@ The following permissions are needed for on a locked resource type: `List`, `Get
 The following permissions are needed on a source reference object type: `List`, `Get`, `Watch`.
 
 The following permissions are needed on a target reference object type: `List`, `Get`, `Watch`, `Patch`.
+
+## Deleting Resources
+
+When a `ResourceLocker` is removed, `LockedResources` will be deleted by the finalizer. Patches will be left untouched because there is no clear way to know how to restore an object to the state before the application of a patch.
+
+If a `ResourceLocker` is updated deleting a `LockedResource`, the operator will try its best to determine which resource was deleted by looking at its internal memory state and at the `kubectl.kubernetes.io/last-applied-configuration`. Both methods are not failsafe so there is a possibility that orphaned resources will be left unmanned. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
 
 ## Local Development
 
@@ -160,9 +167,9 @@ use this version format: vM.m.z
 
 ## Roadmap
 
-* Add status and error management
-* Initialization/Finalization
+* <s>Add status and error management</s>
+* <s>Initialization/Finalization<s>
 * Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).
   * Improve event filter to consider exclusions.
   * Same logic for objects referenced in patches which use the fieldPath.
-* Add ability to watch on specific objects, not just types.  
+* Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).  
