@@ -557,7 +557,6 @@ func (r *ReconcileResourceLocker) addResourcesAndPacthesStatuses(instance *redha
 	instance.Status.ResourceStatuses = resourceStatuses
 	patchStatuses := []v1alpha1.LockingStatus{}
 	for _, reconciler := range resourceLocker.LockedPatchReconcilers {
-		log.Info("retrived", "status", reconciler.GetStatus())
 		patchStatuses = append(patchStatuses, v1alpha1.LockingStatus{
 			Name:           getPatchName(instance, &reconciler.Patch),
 			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
@@ -588,6 +587,5 @@ type genericEventPredicateLogger struct {
 }
 
 func (gep genericEventPredicateLogger) Generic(e event.GenericEvent) bool {
-	log.Info("statusUpdate channel Generic called", "event", e)
 	return true
 }

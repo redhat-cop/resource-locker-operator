@@ -3,13 +3,13 @@ package patchlocker
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"text/template"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
-	yalp "github.com/yalp/jsonpath"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -154,25 +154,21 @@ type enqueueRequestForPatch struct {
 var enqueueLog = logf.Log.WithName("eventhandler").WithName("EnqueueRequestForObject")
 
 func (e *enqueueRequestForPatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	//enqueueLog.Info("CreateEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Update implements EventHandler
 func (e *enqueueRequestForPatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	//enqueueLog.Info("UpdateEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Delete implements EventHandler
 func (e *enqueueRequestForPatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	//enqueueLog.Info("DeleteEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
 // Generic implements EventHandler
 func (e *enqueueRequestForPatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-	//enqueueLog.Info("GenericEvent received ", "event", evt)
 	q.Add(e.Request)
 }
 
@@ -185,7 +181,6 @@ var predicateLog = logf.Log.WithName("predicate").WithName("ReferenceModifiedPre
 
 // Update implements default UpdateEvent filter for validating resource version change
 func (p *referenceModifiedPredicate) Update(e event.UpdateEvent) bool {
-	//predicateLog.Info("UpdateEvent received ", "event", e)
 	if e.MetaNew.GetName() == p.ObjectReference.Name && e.MetaNew.GetNamespace() == p.ObjectReference.Namespace {
 		return true
 	}
@@ -193,7 +188,6 @@ func (p *referenceModifiedPredicate) Update(e event.UpdateEvent) bool {
 }
 
 func (p *referenceModifiedPredicate) Create(e event.CreateEvent) bool {
-	//predicateLog.Info("CreateEvent received ", "event", e)
 	if e.Meta.GetName() == p.ObjectReference.Name && e.Meta.GetNamespace() == p.ObjectReference.Namespace {
 		return true
 	}
@@ -201,13 +195,11 @@ func (p *referenceModifiedPredicate) Create(e event.CreateEvent) bool {
 }
 
 func (p *referenceModifiedPredicate) Delete(e event.DeleteEvent) bool {
-	//predicateLog.Info("DeleteEvent received ", "event", e)
 	// we ignore Delete events because if we loosing references there is no point in trying to recompute the patch
 	return false
 }
 
 func (p *referenceModifiedPredicate) Generic(e event.GenericEvent) bool {
-	//predicateLog.Info("GenericEvent received ", "event", e)
 	// we ignore Generic events
 	return false
 }
@@ -241,7 +233,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 		log.Error(err, "unable to process ", "template ", lpr.Template, "parameters", sourceMaps)
 		return lpr.manageError(err)
 	}
-	log.Info("processed", "template", b.String())
+	//log.Info("processed", "template", b.String())
 	// convert the patch to from yaml to json
 	bb, err := yaml.YAMLToJSON(b.Bytes())
 
@@ -249,7 +241,7 @@ func (lpr *LockedPatchReconciler) Reconcile(request reconcile.Request) (reconcil
 		log.Error(err, "unable to convert to json", "processed template", b.String())
 		return lpr.manageError(err)
 	}
-	log.Info("json", "patch", string(bb))
+	//log.Info("json", "patch", string(bb))
 	//apply the patch
 
 	patch := client.ConstantPatch(lpr.PatchType, bb)
@@ -293,35 +285,25 @@ func getSubMapFromObject(obj *unstructured.Unstructured, fieldPath string) (inte
 	if fieldPath == "" {
 		return obj.UnstructuredContent(), nil
 	}
-	// look into this: k8s.io/client-go/util/jsonpath
-	/* 	fieldPath, err := relaxedJSONPathExpression(fieldPath)
-	   	if err != nil {
-	   		log.Error(err, "unable to relaxively parse ", "fieldPath", fieldPath)
-	   		return map[string]interface{}{}, err
-	   	} */
+
 	jp := jsonpath.New("fieldPath:" + fieldPath)
-	err := jp.Parse(fieldPath)
+	err := jp.Parse("{" + fieldPath + "}")
 	if err != nil {
 		log.Error(err, "unable to parse ", "fieldPath", fieldPath)
 		return nil, err
 	}
-	log.Info("applying ", "fieldPath ", fieldPath, " to object ", obj.UnstructuredContent())
+
 	values, err := jp.FindResults(obj.UnstructuredContent())
 	if err != nil {
 		log.Error(err, "unable to apply ", "jsonpath", jp, " to obj ", obj.UnstructuredContent())
 		return nil, err
 	}
-	log.Info("here are the ", "results ", values)
 
-	results, err := yalp.Read(obj.UnstructuredContent(), fieldPath)
-
-	if err != nil {
-		log.Error(err, "unable to apply yalp", "jsonpath", fieldPath, " to obj ", obj.UnstructuredContent())
-		return nil, err
+	if len(values) > 0 && len(values[0]) > 0 {
+		return values[0][0].Interface(), nil
 	}
-	log.Info("here are the ", "results ", results)
 
-	return results, nil
+	return nil, errors.New("jsonpath returned empty result")
 }
 
 func (lpr *LockedPatchReconciler) getAPIReourceForGVK(gvk schema.GroupVersionKind) (metav1.APIResource, error) {
@@ -399,11 +381,8 @@ func (lpr *LockedPatchReconciler) manageSuccess() (reconcile.Result, error) {
 }
 
 func (lpr *LockedPatchReconciler) setStatus(status PatchStatus) {
-	log.Info("setting ", "status", status)
 	lpr.status = status
-	log.Info("status change", "channel", lpr.statusChange)
 	if lpr.statusChange != nil {
-		log.Info("sending event")
 		lpr.statusChange <- event.GenericEvent{
 			Meta: lpr.parentObject,
 		}
