@@ -13,6 +13,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.LockingStatus":        schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Patch":                schema_pkg_apis_redhatcop_v1alpha1_Patch(ref),
+		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Resource":             schema_pkg_apis_redhatcop_v1alpha1_Resource(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLocker":       schema_pkg_apis_redhatcop_v1alpha1_ResourceLocker(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLockerSpec":   schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref),
 		"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.ResourceLockerStatus": schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerStatus(ref),
@@ -122,6 +123,44 @@ func schema_pkg_apis_redhatcop_v1alpha1_Patch(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_redhatcop_v1alpha1_Resource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"object": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+						},
+					},
+					"excludedPaths": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "set",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"object"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/runtime.RawExtension"},
+	}
+}
+
 func schema_pkg_apis_redhatcop_v1alpha1_ResourceLocker(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -185,16 +224,10 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref common.ReferenceC
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+										Ref: ref("github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Resource"),
 									},
 								},
 							},
-						},
-					},
-					"serviceAccountRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ServiceAccountRef is the service account to be used to run the controllers associated with this configuration",
-							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
 						},
 					},
 					"patches": {
@@ -215,11 +248,17 @@ func schema_pkg_apis_redhatcop_v1alpha1_ResourceLockerSpec(ref common.ReferenceC
 							},
 						},
 					},
+					"serviceAccountRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServiceAccountRef is the service account to be used to run the controllers associated with this configuration",
+							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Patch", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/apimachinery/pkg/runtime.RawExtension"},
+			"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Patch", "github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1.Resource", "k8s.io/api/core/v1.LocalObjectReference"},
 	}
 }
 

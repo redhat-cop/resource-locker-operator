@@ -7,20 +7,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ResourceLockerSpec defines the desired state of ResourceLocker
 // +k8s:openapi-gen=true
 type ResourceLockerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
 	// Resources is a list of resource manifests that should be locked into the specified configuration
 	// +kubebuilder:validation:Optional
 	// +listType=atomic
-	Resources []runtime.RawExtension `json:"resources,omitempty"`
+	Resources []Resource `json:"resources,omitempty"`
 
 	// Patches is a list of pacthes that should be encforced at runtime.
 	// +kubebuilder:validation:Optional
@@ -31,6 +25,15 @@ type ResourceLockerSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:="{Name:default}"
 	ServiceAccountRef corev1.LocalObjectReference `json:"serviceAccountRef,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type Resource struct {
+	// +kubebuilder:validation:Required
+	Object runtime.RawExtension `json:"object"`
+	// +kubebuilder:validation:Optional
+	// +listType=set
+	ExcludedPaths []string `json:"excludedPaths,omitempty"`
 }
 
 // Patch describe a pacth to be enforced at runtim

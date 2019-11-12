@@ -236,21 +236,29 @@ func getKeyFromInstance(instance *redhatcopv1alpha1.ResourceLocker) string {
 
 func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructured.Unstructured, error) {
 	objs := []unstructured.Unstructured{}
-	for _, raw := range instance.Spec.Resources {
-		bb, err := yaml.YAMLToJSON(raw.Raw)
+	for _, resource := range instance.Spec.Resources {
+		bb, err := yaml.YAMLToJSON(resource.Object.Raw)
 		if err != nil {
-			log.Error(err, "Error transforming yaml to json", "raw", raw.Raw)
+			log.Error(err, "Error transforming yaml to json", "raw", resource.Object.Raw)
 			return []unstructured.Unstructured{}, err
 		}
-		obj := unstructured.Unstructured{}
-		err = json.Unmarshal(bb, &obj)
+		obj := &unstructured.Unstructured{}
+		err = json.Unmarshal(bb, obj)
 		if err != nil {
 			log.Error(err, "Error unmarshalling json manifest", "manifest", string(bb))
 			return []unstructured.Unstructured{}, err
 		}
-		objs = append(objs, obj)
+		obj = removeExcludedPaths(obj, resource.ExcludedPaths)
+		objs = append(objs, *obj)
 	}
 	return objs, nil
+}
+
+func removeExcludedPaths(obj *unstructured.Unstructured, paths []string) *unstructured.Unstructured {
+	// for _, path := range paths {
+	// 	patch := client.ConstantPatch(types.StrategicMergePatchType, []byte(path))
+	// }
+	return &unstructured.Unstructured{}
 }
 
 func (r *ReconcileResourceLocker) isInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {

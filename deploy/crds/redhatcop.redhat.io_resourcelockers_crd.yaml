@@ -139,6 +139,15 @@ spec:
               description: Resources is a list of resource manifests that should be
                 locked into the specified configuration
               items:
+                properties:
+                  excludedPaths:
+                    items:
+                      type: string
+                    type: array
+                  object:
+                    type: object
+                required:
+                - object
                 type: object
               type: array
             serviceAccountRef:
