@@ -1,61 +1,58 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: resource-locker-operator
 rules:
 - apiGroups:
+  - redhatcop.redhat.io
+  resources:
+  - 'resourcelockers'
+  verbs:
+  - '*'
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: resource-locker-operator
+rules:
+# leader election   
+- apiGroups:
   - ""
   resources:
-  - pods
-  - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
   - configmaps
-  - secrets
+  - pods
   verbs:
-  - '*'
+  - "*"  
+#Metrics  
 - apiGroups:
-  - apps
+  - ""
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
+  - services
   verbs:
-  - '*'
+  - "*"
+#Metrics  
+- apiGroups:
+  - "apps"
+  resources:
+  - replicasets
+  - deployments
+  verbs: 
+  - "get"
+  - "list"
+# Metrics  
 - apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
   verbs:
-  - get
-  - create
+  - "get"
+  - "create"
+# Metrics  
 - apiGroups:
   - apps
-  resourceNames:
-  - resource-locker-operator
   resources:
   - deployments/finalizers
+  resourceNames:
+  - resource-locker-operator
   verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - get
-- apiGroups:
-  - redhatcop.redhat.io
-  resources:
-  - '*'
-  verbs:
-  - '*'
+  - "update"

@@ -1,0 +1,125 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "redhatcop.redhat.io/v1alpha1",
+          "kind": "ResourceLocker",
+          "metadata": {
+            "name": "example-resourcelocker"
+          },
+          "spec": {
+            "size": 3
+          }
+        }
+      ]
+    capabilities: Basic Install
+  name: resource-locker-operator.v0.1.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: ResourceLocker
+      name: resourcelockers.redhatcop.redhat.io
+      version: v1alpha1
+  description: Placeholder description
+  displayName: Resource Locker Operator
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - redhatcop.redhat.io
+          resources:
+          - resourcelockers
+          verbs:
+          - '*'
+        serviceAccountName: resource-locker-operator
+      deployments:
+      - name: resource-locker-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: resource-locker-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: resource-locker-operator
+            spec:
+              containers:
+              - command:
+                - resource-locker-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: resource-locker-operator
+                image: quay.io/redhat-cop/resource-locker-operator:v0.1.0
+                imagePullPolicy: Always
+                name: resource-locker-operator
+                resources: {}
+              serviceAccountName: resource-locker-operator
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - replicasets
+          - deployments
+          verbs:
+          - get
+          - list
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - get
+          - create
+        - apiGroups:
+          - apps
+          resourceNames:
+          - resource-locker-operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        serviceAccountName: resource-locker-operator
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  maturity: alpha
+  provider: {}
+  replaces: resource-locker-operator.v0.0.0
+  version: 0.1.0
