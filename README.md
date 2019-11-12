@@ -1,5 +1,7 @@
 # Resource Locker Operator
 
+[![Build Status](https://travis-ci.org/redhat-cop/resource-locker-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/resource-locker-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/resource-locker-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/resource-locker-operator)
+
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
 
@@ -33,7 +35,7 @@ It contains:
 
 * `resources`: representing an array of resources
 * `patches`: representing an array of patches
-* `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to :`default`
+* `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to: `default`
 
 For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
 
