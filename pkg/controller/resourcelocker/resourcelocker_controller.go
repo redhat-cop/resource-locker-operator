@@ -9,6 +9,7 @@ import (
 	"text/template"
 	"time"
 
+	set "github.com/deckarep/golang-set"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	redhatcopv1alpha1 "github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -234,6 +236,21 @@ func getKeyFromInstance(instance *redhatcopv1alpha1.ResourceLocker) string {
 	}.String()
 }
 
+func getLockedResource(raw *runtime.RawExtension) (*unstructured.Unstructured, error) {
+	bb, err := yaml.YAMLToJSON(raw.Raw)
+	if err != nil {
+		log.Error(err, "Error transforming yaml to json", "raw", raw.Raw)
+		return &unstructured.Unstructured{}, err
+	}
+	obj := &unstructured.Unstructured{}
+	err = json.Unmarshal(bb, obj)
+	if err != nil {
+		log.Error(err, "Error unmarshalling json manifest", "manifest", string(bb))
+		return &unstructured.Unstructured{}, err
+	}
+	return obj, nil
+}
+
 func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructured.Unstructured, error) {
 	objs := []unstructured.Unstructured{}
 	for _, resource := range instance.Spec.Resources {
@@ -248,24 +265,26 @@ func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructu
 			log.Error(err, "Error unmarshalling json manifest", "manifest", string(bb))
 			return []unstructured.Unstructured{}, err
 		}
-		obj = removeExcludedPaths(obj, resource.ExcludedPaths)
 		objs = append(objs, *obj)
 	}
 	return objs, nil
 }
 
-func removeExcludedPaths(obj *unstructured.Unstructured, paths []string) *unstructured.Unstructured {
-	// for _, path := range paths {
-	// 	patch := client.ConstantPatch(types.StrategicMergePatchType, []byte(path))
-	// }
-	return &unstructured.Unstructured{}
-}
+var defaultExcludedPaths = []string{".metadata", ".status", "spec.replicas"}
 
 func (r *ReconcileResourceLocker) isInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {
 	needsUpdate := false
 	if instance.Spec.ServiceAccountRef.Name == "" {
 		instance.Spec.ServiceAccountRef.Name = "default"
 		needsUpdate = true
+	}
+	for i := range instance.Spec.Resources {
+		defaultSet := set.NewSetFromSlice(defaultExcludedPaths)
+		currentSet := set.NewSetFromSlice(instance.Spec.Resources[i].ExcludedPaths)
+		if !currentSet.Union(defaultSet).Equal(currentSet) {
+			instance.Spec.Resources[i] = []string(currentSet.Union(defaultSet).ToSlice())
+			needsUpdate = true
+		}
 	}
 	for i := range instance.Spec.Patches {
 		if instance.Spec.Patches[i].PatchType == "" {
@@ -281,11 +300,6 @@ func (r *ReconcileResourceLocker) isInitialized(instance *redhatcopv1alpha1.Reso
 }
 
 func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*ResourceLocker, error) {
-	lockedResources, err := getLockedResources(instance)
-	if err != nil {
-		return &ResourceLocker{}, err
-	}
-	patches, err := getPatches(instance)
 	config, err := r.getRestConfigFromInstance(instance)
 	if err != nil {
 		return &ResourceLocker{}, err
@@ -298,14 +312,22 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 		return &ResourceLocker{}, err
 	}
 	resourceReconcilers := []*lockedresourcecontroller.LockedResourceReconciler{}
-	for _, lockedResource := range lockedResources {
-		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, lockedResource, r.statusChange, instance)
+	for _, resource := range instance.Spec.Resources {
+		lockedResource, err := getLockedResource(&resource.Object)
+		if err != nil {
+			return &ResourceLocker{}, err
+		}
+		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, *lockedResource, resource.ExcludedPaths, r.statusChange, instance)
 		if err != nil {
 			return &ResourceLocker{}, err
 		}
 		resourceReconcilers = append(resourceReconcilers, reconciler)
 	}
 	patchReconcilers := []*patchlocker.LockedPatchReconciler{}
+	patches, err := getPatches(instance)
+	if err != nil {
+		return &ResourceLocker{}, err
+	}
 	for _, patch := range patches {
 		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, r.statusChange, instance)
 		if err != nil {
