@@ -17,7 +17,8 @@ metadata:
   name: test-simple-resource
 spec:
   resources:
-  - apiVersion: v1
+  - object:
+      apiVersion: v1
   ...
   patches:
   - targetObjectRef:
@@ -130,7 +131,7 @@ This allows for the following:
 1. Run the operator with relatively restricted permissions.
 2. Prevent privilege escalation by making sure that used permissions have actually been explicitly granted.
 
-The following permissions are needed for on a locked resource type: `List`, `Get`, `Watch`, `Create`, `Update`.
+The following permissions are needed for on a locked resource type: `List`, `Get`, `Watch`, `Create`, `Update`, `Patch`.
 
 The following permissions are needed on a source reference object type: `List`, `Get`, `Watch`.
 
