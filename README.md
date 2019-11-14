@@ -50,23 +50,32 @@ metadata:
   name: test-simple-resource
 spec:
   resources:
-  - apiVersion: v1
-    kind: ResourceQuota
-    metadata:
-      name: small-size
-      namespace: resource-locker-test
-    spec:
-      hard:
-        requests.cpu: "4"
-        requests.memory: "2Gi"
+    - excludedPaths:
+        - .metadata
+        - .status
+        - .spec.replicas
+      object:
+        apiVersion: v1
+        kind: ResourceQuota
+        metadata:
+          name: small-size
+          namespace: resource-locker-test
+        spec:
+          hard:
+            requests.cpu: '4'
+            requests.memory: 4Gi
   serviceAccountRef:
     name: default
 ```
 
-I this example we lock in a ResourceQuota configuration. Resource must be fully specified (i.e. no templating is allowed and all the mandatory fields must be initialized).
-Resources created this ways are allowed to drift from the initial created state only in the `metadata` and `status` section. If drift occurs for in the `spec`, the operator will immediately reset the resource.
+I this example we lock in a ResourceQuota configuration. Resources must be fully specified (i.e. no templating is allowed and all the mandatory fields must be initialized).
+Resources created this way are allowed to drift from the desired state only in the `excludedPaths`, which are jsonPath expressions. If drift occurs in other section of the resource, the operator will immediately reset the resource. The following `excludedPaths` are always added:
 
-Special handling is in place for legacy `v1` objects that do not comply with the `metadata/spec/status` conventional structure such as: `ServiceAccount`, `ConfigMap`, `Secret`, `Role`, `ClusterRole`. CRDs that do not comply with the `metadata/spec/status` structure will cause the operator to error out.
+* `.metadata`
+* `.status`
+* `.spec.replicas`
+
+and in most cases should be the right choice.
 
 ## Resource Patch Locking
 
@@ -172,5 +181,5 @@ use this version format: vM.m.z
 * <s>Add status and error management</s>
 * <s>Initialization/Finalization</s>
   * resource deletion should be based on the last recorded status on the status object, change the current approach
-* <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).<s>
+* <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).</s>
 * Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).  
