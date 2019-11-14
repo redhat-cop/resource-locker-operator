@@ -1,8 +1,8 @@
 package lockedresourcecontroller
 
 import (
-	"errors"
 	"reflect"
+	"strings"
 
 	"encoding/json"
 
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -82,8 +83,6 @@ const (
 // NewReconciler returns a new reconcile.Reconciler
 func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstructured, excludePaths []string, statusChange chan<- event.GenericEvent, parentObject metav1.Object) (*LockedResourceReconciler, error) {
 
-	// TODO create the object is it does not exists
-
 	reconciler := &LockedResourceReconciler{
 		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("controller_locked_object_"+GetKeyFromObject(&object))),
 		Resource:       object,
@@ -92,13 +91,15 @@ func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstruct
 		parentObject:   parentObject,
 	}
 
-	err := reconciler.CreateOrUpdateResource(nil, "", &object)
+	err := reconciler.CreateOrUpdateResource(nil, "", object.DeepCopy())
 	if err != nil {
+		log.Error(err, "unable to create or update", "resource", object)
 		return &LockedResourceReconciler{}, err
 	}
 
 	controller, err := controller.New("controller_locked_object_"+GetKeyFromObject(&object), mgr, controller.Options{Reconciler: reconciler})
 	if err != nil {
+		log.Error(err, "unable to create new controller", "with reconciler", reconciler)
 		return &LockedResourceReconciler{}, err
 	}
 
@@ -112,6 +113,7 @@ func NewLockedObjectReconciler(mgr manager.Manager, object unstructured.Unstruct
 		namespace: object.GetNamespace(),
 	})
 	if err != nil {
+		log.Error(err, "unable to create new wtach", "with source", object)
 		return &LockedResourceReconciler{}, err
 	}
 
@@ -126,60 +128,108 @@ func (lor *LockedResourceReconciler) Reconcile(request reconcile.Request) (recon
 	//instance := &unstructured.Unstructured{}
 	client, err := lor.GetDynamicClientOnUnstructured(lor.Resource)
 	if err != nil {
+		log.Error(err, "unable to get dynamicClient", "on object", lor.Resource)
 		return lor.manageError(err)
 	}
 	instance, err := client.Get(lor.Resource.GetName(), v1.GetOptions{})
-
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// if not found we have to recreate it.
-			err = lor.CreateOrUpdateResource(nil, "", &lor.Resource)
+			err = lor.CreateOrUpdateResource(nil, "", lor.Resource.DeepCopy())
 			if err != nil {
+				log.Error(err, "unable to create or update", "object", lor.Resource)
 				lor.manageError(err)
 			}
 			return lor.manageSuccess()
 		}
 		// Error reading the object - requeue the request.
+		log.Error(err, "unable to lookup", "object", lor.Resource)
 		return lor.manageError(err)
 	}
-
-	if !lor.isEqual(instance) {
-		instance, err = lor.getPacthedInstance(instance)
-		if err != nil {
-			return lor.manageError(err)
-		}
+	log.Info("determining if resources are equal", "desired", lor.Resource, "current", instance)
+	equal, err := lor.isEqual(instance)
+	if err != nil {
+		log.Error(err, "unable to determine if", "object", lor.Resource, "is equal to object", instance)
+		return lor.manageError(err)
+	}
+	if !equal {
+		log.Info("determined that resources are NOT equal")
 		patch, err := filterOutPaths(&lor.Resource, lor.ExcludePaths)
 		if err != nil {
+			log.Error(err, "unable to filter out ", "excluded paths", lor.ExcludePaths, "from object", lor.Resource)
 			return lor.manageError(err)
 		}
 		patchBytes, err := json.Marshal(patch)
 		if err != nil {
+			log.Error(err, "unable to marshall ", "object", patch)
 			return lor.manageError(err)
 		}
+		log.Info("executing", "patch", string(patchBytes), "on object", instance)
 		_, err = client.Patch(instance.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
 		if err != nil {
+			log.Error(err, "unable to patch ", "object", instance, "with patch", string(patchBytes))
 			return lor.manageError(err)
 		}
 		return lor.manageSuccess()
 	}
-
+	log.Info("determined that resources are equal")
 	return lor.manageSuccess()
 }
 
-func (lor *LockedResourceReconciler) getPacthedInstance(instance *unstructured.Unstructured) (*unstructured.Unstructured, error) {
-	return &unstructured.Unstructured{}, errors.New("not implemented")
+// GetDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
+func (r *LockedResourceReconciler) GetDynamicClientOnUnstructured(obj unstructured.Unstructured) (dynamic.ResourceInterface, error) {
+	apiRes, err := r.getAPIReourceForUnstructured(obj)
+	if err != nil {
+		log.Error(err, "unable to get apiresource from unstructured", "unstructured", obj)
+		return nil, err
+	}
+	dc, err := r.GetDynamicClientOnAPIResource(apiRes)
+	if err != nil {
+		log.Error(err, "unable to get namespaceable dynamic client from ", "resource", apiRes)
+		return nil, err
+	}
+	if apiRes.Namespaced {
+		return dc.Namespace(obj.GetNamespace()), nil
+	}
+	return dc, nil
 }
 
-func (lor *LockedResourceReconciler) isEqual(instance *unstructured.Unstructured) bool {
-	left, err := filterOutPaths(&lor.Resource, lor.ExcludePaths)
+func (r *LockedResourceReconciler) getAPIReourceForUnstructured(obj unstructured.Unstructured) (metav1.APIResource, error) {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	res := metav1.APIResource{}
+	discoveryClient, err := r.GetDiscoveryClient()
 	if err != nil {
-		return false
+		log.Error(err, "unable to create discovery client")
+		return res, err
+	}
+	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
+	if err != nil {
+		log.Error(err, "unable to retrieve resouce list for:", "groupversion", gvk.GroupVersion().String())
+		return res, err
+	}
+	for _, resource := range resList.APIResources {
+		if resource.Kind == gvk.Kind && !strings.Contains(resource.Name, "/") {
+			res = resource
+			res.Group = gvk.Group
+			res.Version = gvk.Version
+			break
+		}
+	}
+	return res, nil
+}
+
+func (lor *LockedResourceReconciler) isEqual(instance *unstructured.Unstructured) (bool, error) {
+	left, err := filterOutPaths(&lor.Resource, lor.ExcludePaths)
+	log.Info("resource", "desired", left)
+	if err != nil {
+		return false, err
 	}
 	right, err := filterOutPaths(instance, lor.ExcludePaths)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return reflect.DeepEqual(left, right)
+	log.Info("resource", "current", right)
+	return reflect.DeepEqual(left, right), nil
 }
 
 func GetKeyFromObject(object *unstructured.Unstructured) string {

@@ -2,13 +2,14 @@ module github.com/redhat-cop/resource-locker-operator
 
 require (
 	github.com/Furduhlutur/yar v0.0.0-20191029142934-8039e70e1aca // indirect
+	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-openapi/spec v0.19.2
 	github.com/operator-framework/operator-sdk v0.11.1-0.20191014155558-888dde512025
-	github.com/pkg/errors v0.8.1
 	github.com/redhat-cop/operator-utils v0.0.0-20191011134647-d53c2c139d07
+	github.com/scylladb/go-set v1.0.2
 	github.com/spf13/pflag v1.0.3
-	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
+	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 // indirect
 	golang.org/x/tools/gopls v0.1.7 // indirect
 	k8s.io/api v0.0.0-20191031065753-b19d8caf39be
 	k8s.io/apimachinery v0.0.0-20191030190112-bb31b70367b7

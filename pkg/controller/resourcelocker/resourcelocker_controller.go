@@ -9,13 +9,13 @@ import (
 	"text/template"
 	"time"
 
-	set "github.com/deckarep/golang-set"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	redhatcopv1alpha1 "github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	"github.com/redhat-cop/resource-locker-operator/pkg/lockedresourcecontroller"
 	"github.com/redhat-cop/resource-locker-operator/pkg/patchlocker"
 	"github.com/redhat-cop/resource-locker-operator/pkg/stoppablemanager"
+	strset "github.com/scylladb/go-set/strset"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +45,7 @@ type ReconcileResourceLocker struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	util.ReconcilerBase
-	ResourceLockers map[string]ResourceLocker
+	ResourceLockers map[string]*ResourceLocker
 	statusChange    chan event.GenericEvent
 }
 
@@ -86,7 +86,7 @@ func Add(mgr manager.Manager) error {
 func newReconciler(mgr manager.Manager) *ReconcileResourceLocker {
 	return &ReconcileResourceLocker{
 		ReconcilerBase:  util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
-		ResourceLockers: map[string]ResourceLocker{},
+		ResourceLockers: map[string]*ResourceLocker{},
 		statusChange:    make(chan event.GenericEvent),
 	}
 }
@@ -151,8 +151,8 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 	if ok, err := r.IsValid(instance); !ok {
 		return r.ManageError(instance, err)
 	}
-	// TODO
-	if ok := r.IsInitialized(instance); !ok {
+
+	if !r.IsInitialized(instance) {
 		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
@@ -196,7 +196,8 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 
 	if ok {
 		// we check if the content of the resource locker is the same
-		reqLogger.Info("resourceLocker exists")
+		log.Info("current", "resources", resourceLocker.getResources())
+		log.Info("new", "resources", newResources)
 		if reflect.DeepEqual(resourceLocker.getResources(), newResources) && reflect.DeepEqual(resourceLocker.getPatches(), newPatches) {
 			// nothing changed, we can return
 			reqLogger.Info("existing locked resources are the same as desired locked resources")
@@ -220,7 +221,7 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Error(err, "Unable to create needed controllers")
 		return r.manageError(instance, err)
 	}
-	r.ResourceLockers[getKeyFromInstance(instance)] = *newResourceLocker
+	r.ResourceLockers[getKeyFromInstance(instance)] = newResourceLocker
 
 	//then we need to start the manager
 	reqLogger.Info("created new manager, starting it...")
@@ -270,31 +271,35 @@ func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructu
 	return objs, nil
 }
 
-var defaultExcludedPaths = []string{".metadata", ".status", "spec.replicas"}
+var defaultExcludedPaths = []string{".metadata", ".status", ".spec.replicas"}
 
-func (r *ReconcileResourceLocker) isInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {
-	needsUpdate := false
+func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {
+	needsUpdate := true
 	if instance.Spec.ServiceAccountRef.Name == "" {
 		instance.Spec.ServiceAccountRef.Name = "default"
-		needsUpdate = true
+		needsUpdate = false
 	}
 	for i := range instance.Spec.Resources {
-		defaultSet := set.NewSetFromSlice(defaultExcludedPaths)
-		currentSet := set.NewSetFromSlice(instance.Spec.Resources[i].ExcludedPaths)
-		if !currentSet.Union(defaultSet).Equal(currentSet) {
-			instance.Spec.Resources[i] = []string(currentSet.Union(defaultSet).ToSlice())
-			needsUpdate = true
+		defaultSet := strset.New(defaultExcludedPaths...)
+		currentSet := strset.New(instance.Spec.Resources[i].ExcludedPaths...)
+		if !currentSet.IsEqual(strset.Union(defaultSet, currentSet)) {
+			instance.Spec.Resources[i].ExcludedPaths = strset.Union(defaultSet, currentSet).List()
+			needsUpdate = false
 		}
 	}
 	for i := range instance.Spec.Patches {
 		if instance.Spec.Patches[i].PatchType == "" {
 			instance.Spec.Patches[i].PatchType = types.StrategicMergePatchType
-			needsUpdate = true
+			needsUpdate = false
 		}
 	}
-	if !util.HasFinalizer(instance, controllerName) {
+	if len(instance.Spec.Resources) > 0 && !util.HasFinalizer(instance, controllerName) {
 		util.AddFinalizer(instance, controllerName)
-		needsUpdate = true
+		needsUpdate = false
+	}
+	if len(instance.Spec.Resources) == 0 && util.HasFinalizer(instance, controllerName) {
+		util.RemoveFinalizer(instance, controllerName)
+		needsUpdate = false
 	}
 	return needsUpdate
 }

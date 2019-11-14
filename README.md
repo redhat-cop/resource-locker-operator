@@ -171,7 +171,6 @@ use this version format: vM.m.z
 
 * <s>Add status and error management</s>
 * <s>Initialization/Finalization</s>
-* Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).
-  * Improve event filter to consider exclusions.
-  * Same logic for objects referenced in patches which use the fieldPath.
+  * resource deletion should be based on the last recorded status on the status object, change the current approach
+* <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).<s>
 * Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).  

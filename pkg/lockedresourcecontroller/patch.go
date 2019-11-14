@@ -9,50 +9,68 @@ import (
 )
 
 func filterOutPaths(obj *unstructured.Unstructured, jsonPaths []string) (*unstructured.Unstructured, error) {
+	doc, err := obj.MarshalJSON()
+	if err != nil {
+		log.Error(err, "unable to marshall", "unstructured", obj)
+		return &unstructured.Unstructured{}, err
+	}
+
 	patches, err := createPatchesFromJsonPaths(jsonPaths)
 	if err != nil {
+		log.Error(err, "unable to create patches from", "jsonPaths", jsonPaths)
 		return &unstructured.Unstructured{}, err
 	}
-	patch, err := jsonpatch.DecodePatch(patches)
-	if err != nil {
-		return &unstructured.Unstructured{}, err
-	}
-
-	original, err := obj.MarshalJSON()
-	if err != nil {
-		return &unstructured.Unstructured{}, err
-	}
-
-	modified, err := patch.Apply(original)
-	if err != nil {
-		return &unstructured.Unstructured{}, err
+	for _, patch := range patches {
+		decodedPatch, err := jsonpatch.DecodePatch(patch)
+		if err != nil {
+			log.Error(err, "unable to decode", "patch", string(patch))
+			return &unstructured.Unstructured{}, err
+		}
+		doc1, err := decodedPatch.Apply(doc)
+		if err != nil {
+			if strings.Contains(err.Error(), "Unable to remove nonexistent key") {
+				continue
+			}
+			log.Error(err, "unable to apply", "patch", patch, "to json", string(doc))
+			return &unstructured.Unstructured{}, err
+		}
+		doc = doc1
 	}
 
 	var result = &unstructured.Unstructured{}
 
-	err = result.UnmarshalJSON(modified)
+	err = result.UnmarshalJSON(doc)
 
 	if err != nil {
+		log.Error(err, "unable to unMarshall", "json", doc)
 		return &unstructured.Unstructured{}, err
 	}
 
 	return result, nil
 }
 
-type patch struct {
-	operation string `json:"op"`
-	path      string `json:"path"`
+type Patch struct {
+	Operation string `json:"op"`
+	Path      string `json:"path"`
 }
 
-func createPatchesFromJsonPaths(jsonPaths []string) ([]byte, error) {
-	patches := []patch{}
+func createPatchesFromJsonPaths(jsonPaths []string) ([][]byte, error) {
+	result := [][]byte{}
 	for _, jsonPath := range jsonPaths {
-		patches = append(patches, patch{
-			operation: "remove",
-			path:      getMergePathFromJsonPath(jsonPath),
-		})
+		patch := []Patch{
+			Patch{
+				Operation: "remove",
+				Path:      getMergePathFromJsonPath(jsonPath),
+			},
+		}
+		mpatch, err := json.Marshal(patch)
+		if err != nil {
+			log.Error(err, "unable to marshal", "patch", patch)
+			return [][]byte{}, err
+		}
+		result = append(result, mpatch)
 	}
-	return json.Marshal(patches)
+	return result, nil
 }
 
 func getMergePathFromJsonPath(jsonPath string) string {

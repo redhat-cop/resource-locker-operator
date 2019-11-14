@@ -1,6 +1,8 @@
 package stoppablemanager
 
 import (
+	"errors"
+
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -16,6 +18,7 @@ type StoppableManager struct {
 
 func (sm *StoppableManager) Stop() {
 	if !sm.started {
+		log.Error(errors.New("invalid argument"), "stop called on a non started channel", "started", sm.started)
 		return
 	}
 	close(sm.stopChannel)
@@ -23,8 +26,8 @@ func (sm *StoppableManager) Stop() {
 }
 
 func (sm *StoppableManager) Start() {
-
 	if sm.started {
+		log.Error(errors.New("invalid argument"), "start called on a started channel")
 		return
 	}
 	go sm.Manager.Start(sm.stopChannel)
