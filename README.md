@@ -141,7 +141,13 @@ The following permissions are needed on a target reference object type: `List`, 
 
 When a `ResourceLocker` is removed, `LockedResources` will be deleted by the finalizer. Patches will be left untouched because there is no clear way to know how to restore an object to the state before the application of a patch.
 
-If a `ResourceLocker` is updated deleting a `LockedResource`, the operator will try its best to determine which resource was deleted by looking at its internal memory state and at the `kubectl.kubernetes.io/last-applied-configuration`. Both methods are not failsafe so there is a possibility that orphaned resources will be left unmanned. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
+If a `ResourceLocker` is updated deleting a `LockedResource`, the operator will try its best to determine which resource was deleted by looking at the following:
+
+* its internal memory state.
+* the `kubectl.kubernetes.io/last-applied-configuration`.
+* the status reported by the CR.
+
+LockedResources reported from these three sources of information will b compared with the desired set of resources. Resources that does not appear in the desired set will be deleted. This method is not 100% failsafe. In particular is someone disable the operator and at the same time changes a ResourceLocker CR by deleting a locked resource, it is possible that a locker resource becomes orphaned and be left un-managed. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
 
 ## Local Development
 
@@ -181,6 +187,6 @@ use this version format: vM.m.z
 
 * <s>Add status and error management</s>
 * <s>Initialization/Finalization</s>
-  * resource deletion should be based on the last recorded status on the status object, change the current approach
+  * <s>resource deletion should be based on the last recorded status on the status object, change the current approach</s>
 * <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).</s>
 * Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).  

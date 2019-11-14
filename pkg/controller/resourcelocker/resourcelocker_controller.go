@@ -12,6 +12,7 @@ import (
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
 	redhatcopv1alpha1 "github.com/redhat-cop/resource-locker-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/redhat-cop/resource-locker-operator/pkg/controller/resourcelocker/objectreferenceset"
 	"github.com/redhat-cop/resource-locker-operator/pkg/lockedresourcecontroller"
 	"github.com/redhat-cop/resource-locker-operator/pkg/patchlocker"
 	"github.com/redhat-cop/resource-locker-operator/pkg/stoppablemanager"
@@ -208,7 +209,7 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		resourceLocker.Manager.Stop()
 	}
 
-	// before we start the manager, when no reconsiler is running, we delete the any possibly removed resource
+	// before we start the manager, when no reconciler is running, we delete the any possibly removed resource
 	err = r.deleteRemovedResources(instance)
 	if err != nil {
 		reqLogger.Error(err, "Unable to delete removed resources")
@@ -475,27 +476,42 @@ func (r *ReconcileResourceLocker) manageError(instance *redhatcopv1alpha1.Resour
 	return reconcile.Result{}, err1
 }
 
+func getObjectReferencesFromStatus(instance *redhatcopv1alpha1.ResourceLocker) []corev1.ObjectReference {
+	var res = []corev1.ObjectReference{}
+	for _, resStatus := range instance.Status.ResourceStatuses {
+		res = append(res, resStatus.ObjectReference)
+	}
+	return res
+}
+
 // delete removed resources. This is a best effort implelemtnation for now.
 // we use the last "kubectl.kubernetes.io/last-applied-configuration" annotation to copare and see if resources were deleted
 // this seems the best we can do without using an external storage
 // we ignore patcher because we can't undo them
 func (r *ReconcileResourceLocker) deleteRemovedResources(instance *redhatcopv1alpha1.ResourceLocker) error {
+	// we create a set of all the possible resources that might have been managed in the past
 	lastAppliedObjs, err := getLastAppliedResources(instance)
 	if err != nil {
+		log.Error(err, "unable to get resources from last applied annotation", "instance", instance)
 		lastAppliedObjs = []unstructured.Unstructured{}
 	}
+	var lastAppliedRes = []unstructured.Unstructured{}
 	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
-	if !ok {
-		return nil
+	if ok {
+		lastAppliedRes = resourceLocker.getResources()
 	}
-	currentObjs := resourceLocker.getResources()
-	desiredObj, err := getLockedResources(instance)
+	// past objects represent the union of all the past locked resources from all the known sources
+	pastObjectRefs := objectreferenceset.Union(objectreferenceset.New(getObjectReferences(lastAppliedObjs)...), objectreferenceset.New(getObjectReferences(lastAppliedRes)...), objectreferenceset.New(getObjectReferencesFromStatus(instance)...))
+
+	desiredObjs, err := getLockedResources(instance)
 	if err != nil {
 		return err
 	}
-	toBeDeleted := leftOuterJoin(lastAppliedObjs, desiredObj)
-	toBeDeleted = append(toBeDeleted, leftOuterJoin(currentObjs, desiredObj)...)
-	for _, obj := range toBeDeleted {
+	desiredObjectRefs := objectreferenceset.New(getObjectReferences(desiredObjs)...)
+
+	toBeDeletedRefs := objectreferenceset.Difference(pastObjectRefs, desiredObjectRefs)
+	for _, ref := range toBeDeletedRefs.List() {
+		obj := getUnstructuredFromRef(&ref)
 		err := r.DeleteResource(&obj)
 		if err != nil {
 			if !errors.IsNotFound(err) {
@@ -504,6 +520,14 @@ func (r *ReconcileResourceLocker) deleteRemovedResources(instance *redhatcopv1al
 		}
 	}
 	return nil
+}
+
+func getUnstructuredFromRef(ref *corev1.ObjectReference) unstructured.Unstructured {
+	res := unstructured.Unstructured{}
+	res.SetGroupVersionKind(ref.GroupVersionKind())
+	res.SetName(ref.Name)
+	res.SetNamespace(ref.Namespace)
+	return res
 }
 
 const lastAppliedAnnotation = "kubectl.kubernetes.io/last-applied-configuration"
@@ -528,17 +552,17 @@ func sameObj(left unstructured.Unstructured, right unstructured.Unstructured) bo
 		left.GetObjectKind().GroupVersionKind().GroupKind() == right.GetObjectKind().GroupVersionKind().GroupKind()
 }
 
-func leftOuterJoin(left []unstructured.Unstructured, right []unstructured.Unstructured) []unstructured.Unstructured {
-	res := []unstructured.Unstructured{}
-	for _, leftObj := range left {
-		for _, rightObj := range right {
-			if sameObj(leftObj, rightObj) {
-				res = append(res, leftObj)
-			}
-		}
-	}
-	return res
-}
+// func leftOuterJoin(left []unstructured.Unstructured, right []unstructured.Unstructured) []unstructured.Unstructured {
+// 	res := []unstructured.Unstructured{}
+// 	for _, leftObj := range left {
+// 		for _, rightObj := range right {
+// 			if sameObj(leftObj, rightObj) {
+// 				res = append(res, leftObj)
+// 			}
+// 		}
+// 	}
+// 	return res
+// }
 
 // manageCleanupLogic delete resources. We don't touch pacthes because we cannot undo them.
 func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1.ResourceLocker) error {
@@ -574,6 +598,23 @@ func (r *ReconcileResourceLocker) manageSuccess(instance *redhatcopv1alpha1.Reso
 	return reconcile.Result{}, nil
 }
 
+func getObjectReference(obj *unstructured.Unstructured) corev1.ObjectReference {
+	return corev1.ObjectReference{
+		Kind:       obj.GetKind(),
+		APIVersion: obj.GetAPIVersion(),
+		Name:       obj.GetName(),
+		Namespace:  obj.GetNamespace(),
+	}
+}
+
+func getObjectReferences(objs []unstructured.Unstructured) []corev1.ObjectReference {
+	var res []corev1.ObjectReference
+	for _, obj := range objs {
+		res = append(res, getObjectReference(&obj))
+	}
+	return res
+}
+
 func (r *ReconcileResourceLocker) addResourcesAndPacthesStatuses(instance *redhatcopv1alpha1.ResourceLocker) {
 	resourceLocker, ok := r.ResourceLockers[getKeyFromInstance(instance)]
 	if !ok {
@@ -582,22 +623,22 @@ func (r *ReconcileResourceLocker) addResourcesAndPacthesStatuses(instance *redha
 	resourceStatuses := []v1alpha1.LockingStatus{}
 	for _, reconciler := range resourceLocker.LockedResourceReconcilers {
 		resourceStatuses = append(resourceStatuses, v1alpha1.LockingStatus{
-			Name:           getResourceName(&reconciler.Resource),
-			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
-			Status:         getStatusOrUnknown(reconciler.GetStatus().Status),
-			LastUpdateTime: getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
-			Message:        reconciler.GetStatus().Message,
+			ObjectReference: getObjectReference(&reconciler.Resource),
+			Type:            v1alpha1.ConditionType(reconciler.GetStatus().Type),
+			Status:          getStatusOrUnknown(reconciler.GetStatus().Status),
+			LastUpdateTime:  getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
+			Message:         reconciler.GetStatus().Message,
 		})
 	}
 	instance.Status.ResourceStatuses = resourceStatuses
 	patchStatuses := []v1alpha1.LockingStatus{}
 	for _, reconciler := range resourceLocker.LockedPatchReconcilers {
 		patchStatuses = append(patchStatuses, v1alpha1.LockingStatus{
-			Name:           getPatchName(instance, &reconciler.Patch),
-			Type:           v1alpha1.ConditionType(reconciler.GetStatus().Type),
-			Status:         getStatusOrUnknown(reconciler.GetStatus().Status),
-			LastUpdateTime: getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
-			Message:        reconciler.GetStatus().Message,
+			ObjectReference: reconciler.Patch.TargetObjectRef,
+			Type:            v1alpha1.ConditionType(reconciler.GetStatus().Type),
+			Status:          getStatusOrUnknown(reconciler.GetStatus().Status),
+			LastUpdateTime:  getTimeOrNow(reconciler.GetStatus().LastUpdateTime),
+			Message:         reconciler.GetStatus().Message,
 		})
 	}
 	instance.Status.PatchStatuses = patchStatuses

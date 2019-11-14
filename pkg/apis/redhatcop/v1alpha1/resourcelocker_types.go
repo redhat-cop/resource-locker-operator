@@ -88,7 +88,7 @@ type ResourceLockerStatus struct {
 type LockingStatus struct {
 	// the name of the locked configuration
 	// +kubebuilder:validation:Required
-	Name string `json:"name"`
+	ObjectReference corev1.ObjectReference `json:"objectReference"`
 	// Type of deployment condition.
 	// +kubebuilder:validation:Enum=Enforcing;Failure
 	// +kubebuilder:validation:Optional

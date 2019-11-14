@@ -4,7 +4,9 @@ require (
 	github.com/Furduhlutur/yar v0.0.0-20191029142934-8039e70e1aca // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/evanphx/json-patch v4.5.0+incompatible
+	github.com/fatih/set v0.2.1
 	github.com/go-openapi/spec v0.19.2
+	github.com/mmatczuk/go_generics v0.0.0-20181212143635-0aaa050f9bab // indirect
 	github.com/operator-framework/operator-sdk v0.11.1-0.20191014155558-888dde512025
 	github.com/redhat-cop/operator-utils v0.0.0-20191011134647-d53c2c139d07
 	github.com/scylladb/go-set v1.0.2

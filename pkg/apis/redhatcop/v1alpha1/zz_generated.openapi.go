@@ -26,11 +26,10 @@ func schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref common.ReferenceCallba
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"name": {
+					"objectReference": {
 						SchemaProps: spec.SchemaProps{
 							Description: "the name of the locked configuration",
-							Type:        []string{"string"},
-							Format:      "",
+							Ref:         ref("k8s.io/api/core/v1.ObjectReference"),
 						},
 					},
 					"type": {
@@ -61,11 +60,11 @@ func schema_pkg_apis_redhatcop_v1alpha1_LockingStatus(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"name", "status"},
+				Required: []string{"objectReference", "status"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/api/core/v1.ObjectReference", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
