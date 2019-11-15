@@ -369,17 +369,23 @@ func (r *ReconcileResourceLocker) getRestConfigFromInstance(instance *redhatcopv
 		}
 	}
 	if tokenSecret.Data == nil {
-		errs.New("unable to find secret of type kubernetes.io/service-account-token for service account")
+		err = errs.New("unable to find secret of type kubernetes.io/service-account-token")
+		log.Error(err, "unable to find secret of type kubernetes.io/service-account-token for", "service account", sa)
+		return &rest.Config{}, err
 	}
 	//KUBERNETES_SERVICE_PORT=443
 	//KUBERNETES_SERVICE_HOST=172.30.0.1
 	kubehost, found := os.LookupEnv("KUBERNETES_SERVICE_HOST")
 	if !found {
-		errs.New("unable to lookup environment variable KUBERNETES_SERVICE_HOST")
+		err = errs.New("unable to lookup environment variable KUBERNETES_SERVICE_HOST")
+		log.Error(err, "KUBERNETES_SERVICE_HOST not found")
+		return &rest.Config{}, err
 	}
 	kubeport, found := os.LookupEnv("KUBERNETES_SERVICE_PORT")
 	if !found {
-		errs.New("unable to lookup environment variable KUBERNETES_SERVICE_PORT")
+		err = errs.New("unable to lookup environment variable KUBERNETES_SERVICE_PORT")
+		log.Error(err, "KUBERNETES_SERVICE_PORT not found")
+		return &rest.Config{}, err
 	}
 	config := rest.Config{
 		Host:        "https://" + kubehost + ":" + kubeport,
