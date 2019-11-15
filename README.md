@@ -8,7 +8,7 @@ Two types of configurations may be specified:
 * Resources. This will instruct the operator to create and enforce the specified resource. In this case the operator "owns" the created resources.
 * Patches to resources. This will instruct the operator to patch- and enforce the change on- a pre-existing resource. In this case the operator does not "own" the resource.
 
-Locker resources are defined with the `ResourceLocker` CRD. Here is the high-level structure of this CRD:
+Locked resources are defined with the `ResourceLocker` CRD. Here is the high-level structure of this CRD:
 
 ```yaml
 apiVersion: redhatcop.redhat.io/v1alpha1
@@ -39,6 +39,43 @@ It contains:
 * `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to: `default`
 
 For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
+
+## Deploying the Operator
+
+This is a cluster-level operator that you can deploy in any namespace, `resource-locker-operator` is recommended.
+
+You can either deploy it using [`Helm`](https://helm.sh/) or creating the manifests directly.
+
+NOTE:
+**Given that a number of elevated permissions are required to create resources at a cluster scope, the account you are currently logged in must have elevated rights.**
+
+### Deploying with Helm
+
+Here are the instructions to install the latest release with Helm.
+
+```shell
+oc new-project resource-locker-operator
+
+helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
+helm repo update
+export resource-locker-operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
+
+helm fetch resource-locker-operator/resource-locker-operator --version ${resource-locker-operator}
+helm template resource-locker-operator-${resource-locker-operator}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
+
+rm resource-locker-operator-${resource-locker-operator}.tgz
+```
+
+### Deploying directly with manifests
+
+Here are the instructions to install the latest release creating the manifest directly in OCP.
+
+```shell
+git clone git@github.com:redhat-cop/resource-locker-operator.git; cd resource-locker-operator
+oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yamlredhatcop.redhat.io_resourcelockers_crd.yaml
+oc new-project resource-locker-operator
+oc -n resource-locker-operator apply -f deploy
+```
 
 ## Resources Locking
 
