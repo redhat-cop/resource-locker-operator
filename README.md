@@ -8,7 +8,7 @@ Two types of configurations may be specified:
 * Resources. This will instruct the operator to create and enforce the specified resource. In this case the operator "owns" the created resources.
 * Patches to resources. This will instruct the operator to patch- and enforce the change on- a pre-existing resource. In this case the operator does not "own" the resource.
 
-Locker resources are defined with the `ResourceLocker` CRD. Here is the high-level structure of this CRD:
+Locked resources are defined with the `ResourceLocker` CRD. Here is the high-level structure of this CRD:
 
 ```yaml
 apiVersion: redhatcop.redhat.io/v1alpha1

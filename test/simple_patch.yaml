@@ -14,5 +14,5 @@ spec:
     patchTemplate: |
       metadata:
         annotations:
-          ciao: hello
+          hello: bye
     patchType: application/strategic-merge-patch+json        
