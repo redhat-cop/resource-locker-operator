@@ -4,7 +4,8 @@ version: ${version}
 appVersion: ${version}
 description: Helm chart that deploys resource-locker-operator
 keywords:
-  - certificates
+  - resource-enforcing
+  - patches-enforcing
   - operator
 sources:
   - https://github.com/redhat-cop/resource-locker-operator
