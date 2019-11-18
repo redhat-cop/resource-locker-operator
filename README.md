@@ -46,9 +46,6 @@ This is a cluster-level operator that you can deploy in any namespace, `resource
 
 You can either deploy it using [`Helm`](https://helm.sh/) or creating the manifests directly.
 
-NOTE:
-**Given that a number of elevated permissions are required to create resources at a cluster scope, the account you are currently logged in must have elevated rights.**
-
 ### Deploying with Helm
 
 Here are the instructions to install the latest release with Helm.
@@ -158,7 +155,8 @@ A patch is defined by the following:
   * `application/merge-patch+json`
   * `application/strategic-merge-patch+json`
   * `application/apply-patch+yaml`
-  If not specified the patchType will be defaulted to: `application/strategic-merge-patch+json`
+  
+If not specified the patchType will be defaulted to: `application/strategic-merge-patch+json`
 
 ## Multitenancy
 
