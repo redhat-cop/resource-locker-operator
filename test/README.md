@@ -20,3 +20,7 @@ oc apply -f ./test/complex_patch.yaml -n resource-locker-test
 ```shell
 oc apply -f ./test/field_patch.yaml -n resource-locker-test
 ```
+
+```shell
+oc apply -f ./test/combined.yaml
+```
