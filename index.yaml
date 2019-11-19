@@ -1,0 +1,20 @@
+apiVersion: v1
+entries:
+  resource-locker-operator:
+  - apiVersion: v1
+    appVersion: pre0.1.0
+    created: "2019-11-19T16:50:42.565638735Z"
+    description: Helm chart that deploys resource-locker-operator
+    digest: cfcc2982c20e9e65c2b87aa48c572134509f27a9cd5bfcb43268860ac84bee29
+    engine: gotpl
+    keywords:
+    - resource-enforcing
+    - patches-enforcing
+    - operator
+    name: resource-locker-operator
+    sources:
+    - https://github.com/redhat-cop/resource-locker-operator
+    urls:
+    - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-pre0.1.0.tgz
+    version: pre0.1.0
+generated: "2019-11-19T16:50:42.565059565Z"
