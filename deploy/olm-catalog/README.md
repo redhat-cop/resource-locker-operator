@@ -71,10 +71,14 @@ git -C /tmp clone https://github.com/operator-framework/community-operators
 git -C /tmp/community-operators remote add tmp https://github.com/${community_fork}/community-operators
 git -C /tmp/community-operators checkout -b resource-locker-operator-${new_version}
 rm -rf /tmp/community-operators/community-operators/resource-locker-operator/*
+mkdir -p /tmp/community-operators/community-operators/resource-locker-operator
 cp -R deploy/olm-catalog/resource-locker-operator/* /tmp/community-operators/community-operators/resource-locker-operator
 git -C /tmp/community-operators add .
 git -C /tmp/community-operators commit -m "resource-locker-operator release ${new_version}" -s
+# TODO push in a way that overwrites whatever exist
 git -C /tmp/community-operators push tmp
+# TODO create the PR only it does not exist already
+# TODO automate which first time/update
 # if first time
 hub -C /tmp/community-operators pull-request -F ./deploy/olm-catalog/pr-message-initial-commit.md
 # else
