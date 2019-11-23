@@ -55,12 +55,12 @@ oc new-project resource-locker-operator
 
 helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
 helm repo update
-export resource-locker-operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
+export resource_locker_operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
 
-helm fetch resource-locker-operator/resource-locker-operator --version ${resource-locker-operator}
-helm template resource-locker-operator-${resource-locker-operator}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
+helm fetch resource-locker-operator/resource-locker-operator --version ${resource_locker_operator_chart_version}
+helm template resource-locker-operator-${resource_locker_operator_chart_version}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
 
-rm resource-locker-operator-${resource-locker-operator}.tgz
+rm resource-locker-operator-${resource_locker_operator_chart_version}.tgz
 ```
 
 ### Deploying directly with manifests

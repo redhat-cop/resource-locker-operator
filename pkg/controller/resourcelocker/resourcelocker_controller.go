@@ -308,6 +308,7 @@ func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.Reso
 func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*ResourceLocker, error) {
 	config, err := r.getRestConfigFromInstance(instance)
 	if err != nil {
+		log.Error(err, "unable to get rest config", "for service account", instance, instance.Spec.ServiceAccountRef)
 		return &ResourceLocker{}, err
 	}
 	stoppableManager, err := stoppablemanager.NewStoppableManager(config, manager.Options{
@@ -315,16 +316,19 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 		LeaderElection:     false,
 	})
 	if err != nil {
+		log.Error(err, "unable to create stoppable manager")
 		return &ResourceLocker{}, err
 	}
 	resourceReconcilers := []*lockedresourcecontroller.LockedResourceReconciler{}
 	for _, resource := range instance.Spec.Resources {
 		lockedResource, err := getLockedResource(&resource.Object)
 		if err != nil {
+			log.Error(err, "unable to create lockedResource", "for object", resource.Object)
 			return &ResourceLocker{}, err
 		}
 		reconciler, err := lockedresourcecontroller.NewLockedObjectReconciler(stoppableManager.Manager, *lockedResource, resource.ExcludedPaths, r.statusChange, instance)
 		if err != nil {
+			log.Error(err, "unable to create reconciler", "for locked resource", lockedResource)
 			return &ResourceLocker{}, err
 		}
 		resourceReconcilers = append(resourceReconcilers, reconciler)
@@ -332,11 +336,13 @@ func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhat
 	patchReconcilers := []*patchlocker.LockedPatchReconciler{}
 	patches, err := getPatches(instance)
 	if err != nil {
+		log.Error(err, "unable to get patches", "from instance", instance)
 		return &ResourceLocker{}, err
 	}
 	for _, patch := range patches {
 		reconciler, err := patchlocker.NewPatchLockerReconciler(stoppableManager.Manager, patch, r.statusChange, instance)
 		if err != nil {
+			log.Error(err, "unable to create reconciler", "for patch", patch)
 			return &ResourceLocker{}, err
 		}
 		patchReconcilers = append(patchReconcilers, reconciler)
