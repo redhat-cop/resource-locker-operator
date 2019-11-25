@@ -590,6 +590,8 @@ func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1
 			return err
 		}
 	}
+	resourceLocker.Manager.Stop()
+	delete(r.ResourceLockers, getKeyFromInstance(instance))
 	return nil
 }
 
