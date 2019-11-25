@@ -49,12 +49,12 @@ spec:
       apiVersion: v1
       kind: ResourceQuota
       metadata:
-        name: small-size
+        name: medium-size
         namespace: resource-locker-test
       spec:
         hard:
-          requests.cpu: "4" 
-          requests.memory: "2Gi"
+          requests.cpu: "6" 
+          requests.memory: "3Gi"
   - object:
       apiVersion: networking.k8s.io/v1
       kind: NetworkPolicy
