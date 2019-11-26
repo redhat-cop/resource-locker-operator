@@ -582,14 +582,14 @@ func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1
 	if !ok {
 		return nil
 	}
+	resourceLocker.Manager.Stop()
+	delete(r.ResourceLockers, getKeyFromInstance(instance))
 	for _, obj := range resourceLocker.getResources() {
 		err := r.DeleteResource(&obj)
 		if err != nil {
 			return err
 		}
 	}
-	resourceLocker.Manager.Stop()
-	delete(r.ResourceLockers, getKeyFromInstance(instance))
 	return nil
 }
 
