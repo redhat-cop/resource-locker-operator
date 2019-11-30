@@ -67,6 +67,7 @@ spec:
           - redhatcop.redhat.io
           resources:
           - resourcelockers
+          - resourcelockers/status
           verbs:
           - '*'
         - apiGroups:
@@ -77,6 +78,7 @@ spec:
           verbs:
           - get
           - list
+          - watch
         serviceAccountName: resource-locker-operator
       deployments:
       - name: resource-locker-operator
@@ -96,9 +98,7 @@ spec:
                 - resource-locker-operator
                 env:
                 - name: WATCH_NAMESPACE
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                  value: ""
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
@@ -127,6 +127,7 @@ spec:
           - ""
           resources:
           - services
+          - services/finalizers
           verbs:
           - '*'
         - apiGroups:
