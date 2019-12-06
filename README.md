@@ -36,7 +36,7 @@ It contains:
 
 * `resources`: representing an array of resources
 * `patches`: representing an array of patches
-* `serviceAccountRef`: a reference to a service account define din the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to: `default`
+* `serviceAccountRef`: a reference to a service account defined in the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to: `default`
 
 For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
 
@@ -148,7 +148,7 @@ spec:
 A patch is defined by the following:
 
 * `targetObjectRef`: representing the object to which the patch needs to be applied. Notice that this kind of object reference can refer to any object type located in any namespace.
-* `sourceObjectRefs`: representing a set of objects that will be used as parameters for the patch template. If the `fieldPath` is not specified, the entire object will be passed as parameter. If the `fieldPath` field is specified, then only the portion of the object specified selected by it will be passed as parameter. The `fieldPath` field must be a valid `jsonPath` expression as defined [here](https://goessner.net/articles/JsonPath/index.html#e2). This [site](https://jsonpath.com/) can be sued to test jsonPath expressions. The jsonPath expression is processed using this [library](https://godoc.org/k8s.io/client-go/util/jsonpath), if more than one result is returned by the jsonPath expression only the first one will be considered.
+* `sourceObjectRefs`: representing a set of objects that will be used as parameters for the patch template. If the `fieldPath` is not specified, the entire object will be passed as parameter. If the `fieldPath` field is specified, then only the portion of the object specified selected by it will be passed as parameter. The `fieldPath` field must be a valid `jsonPath` expression as defined [here](https://goessner.net/articles/JsonPath/index.html#e2). This [site](https://jsonpath.com/) can be used to test jsonPath expressions. The jsonPath expression is processed using this [library](https://godoc.org/k8s.io/client-go/util/jsonpath), if more than one result is returned by the jsonPath expression only the first one will be considered.
 * `patchTemplate`: a [go template](https://golang.org/pkg/text/template/) template representing the patch. The go template must resolved to a yaml structure representing a valid patch for the target object. The yaml structure will be converted to json. When processing this template, one parameter is passed structured as an array containing the sourceObjects (or their fields if the `fieldPath` is specified).
 * `patchType`: the type of patch, must be one of the following:
   * `application/json-patch+json`
@@ -160,13 +160,13 @@ If not specified the patchType will be defaulted to: `application/strategic-merg
 
 ## Multitenancy
 
-The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially eny objects (including secrets), in reality one needs to have been given permission to do so via permission granted to the service referenced account.
+The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially any objects (including secrets), in reality one needs to have been given permission to do so via permission granted to the service referenced account.
 This allows for the following:
 
 1. Run the operator with relatively restricted permissions.
 2. Prevent privilege escalation by making sure that used permissions have actually been explicitly granted.
 
-The following permissions are needed for on a locked resource type: `List`, `Get`, `Watch`, `Create`, `Update`, `Patch`.
+The following permissions are needed on a locked resource object type: `List`, `Get`, `Watch`, `Create`, `Update`, `Patch`.
 
 The following permissions are needed on a source reference object type: `List`, `Get`, `Watch`.
 
@@ -182,7 +182,7 @@ If a `ResourceLocker` is updated deleting a `LockedResource`, the operator will 
 * the `kubectl.kubernetes.io/last-applied-configuration`.
 * the status reported by the CR.
 
-LockedResources reported from these three sources of information will b compared with the desired set of resources. Resources that does not appear in the desired set will be deleted. This method is not 100% failsafe. In particular is someone disable the operator and at the same time changes a ResourceLocker CR by deleting a locked resource, it is possible that a locker resource becomes orphaned and be left un-managed. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
+LockedResources reported from these three sources of information will be compared with the desired set of resources. Resources that do not appear in the desired set will be deleted. This method is not 100% failsafe. In particular, if someone disables the operator and at the same time changes a ResourceLocker CR by deleting a locked resource, it is possible that a locker resource becomes orphaned and be left un-managed. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
 
 ## Local Development
 
