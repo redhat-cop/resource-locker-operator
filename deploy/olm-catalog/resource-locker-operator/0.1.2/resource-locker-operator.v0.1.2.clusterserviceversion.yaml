@@ -17,8 +17,7 @@ metadata:
                   "apiVersion": "v1",
                   "kind": "ResourceQuota",
                   "metadata": {
-                    "name": "small-size",
-                    "namespace": "resource-locker-test"
+                    "name": "small-size"
                   },
                   "spec": {
                     "hard": {
@@ -49,8 +48,7 @@ metadata:
                 "targetObjectRef": {
                   "apiVersion": "v1",
                   "kind": "ServiceAccount",
-                  "name": "test",
-                  "namespace": "resource-locker-test"
+                  "name": "test"
                 },
                 "patchTemplate": "metadata:\n  annotations:\n    hello: bye\n",
                 "patchType": "application/strategic-merge-patch+json"
@@ -74,7 +72,6 @@ metadata:
                   "apiVersion": "v1",
                   "kind": "ServiceAccount",
                   "name": "test",
-                  "namespace": "resource-locker-test"
                 },
                 "patchTemplate": "metadata:\n  annotations:\n    {{ (index . 0).metadata.name }}: {{ (index . 1).metadata.name }}\n",
                 "patchType": "application/strategic-merge-patch+json",
@@ -87,8 +84,7 @@ metadata:
                   {
                     "apiVersion": "v1",
                     "kind": "ServiceAccount",
-                    "name": "default",
-                    "namespace": "resource-locker-test"
+                    "name": "default"
                   }
                 ]
               }
