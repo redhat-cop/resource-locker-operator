@@ -197,8 +197,8 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 
 	if ok {
 		// we check if the content of the resource locker is the same
-		log.Info("current", "resources", resourceLocker.getResources())
-		log.Info("new", "resources", newResources)
+		log.V(1).Info("current", "resources", resourceLocker.getResources())
+		log.V(1).Info("new", "resources", newResources)
 		if reflect.DeepEqual(resourceLocker.getResources(), newResources) && reflect.DeepEqual(resourceLocker.getPatches(), newPatches) {
 			// nothing changed, we can return
 			reqLogger.Info("existing locked resources are the same as desired locked resources")
@@ -524,7 +524,7 @@ func (r *ReconcileResourceLocker) deleteRemovedResources(instance *redhatcopv1al
 	toBeDeletedRefs := objectreferenceset.Difference(pastObjectRefs, desiredObjectRefs)
 	for _, ref := range toBeDeletedRefs.List() {
 		obj := getUnstructuredFromRef(&ref)
-		err := r.DeleteResource(&obj)
+		err := r.DeleteResourceIfExists(&obj)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return err
@@ -585,7 +585,7 @@ func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1
 	resourceLocker.Manager.Stop()
 	delete(r.ResourceLockers, getKeyFromInstance(instance))
 	for _, obj := range resourceLocker.getResources() {
-		err := r.DeleteResource(&obj)
+		err := r.DeleteResourceIfExists(&obj)
 		if err != nil {
 			return err
 		}
