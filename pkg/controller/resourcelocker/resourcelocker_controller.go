@@ -274,12 +274,22 @@ func getLockedResources(instance *redhatcopv1alpha1.ResourceLocker) ([]unstructu
 
 var defaultExcludedPaths = []string{".metadata", ".status", ".spec.replicas"}
 
+// IsInitialized will accept a ResourceLocker object and return true when no further changes
+// to the object have been taken  to make sure it looks as expected. Possible changes include setting default values
+// for the serviceAccountRef, patchStrategy, or namespace values for objects/patches if they are
+// empty. This is changed at the custom resource (by the operator) so that the user is made
+// aware of how those values are being interpreted by the operator logic.
+//
+// This will return false in all cases where the object has undergone a modification, and will return
+// true if no modification takes place.
 func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.ResourceLocker) bool {
+	// assume nothing has changed until something causes a change.
 	needsUpdate := true
 	if instance.Spec.ServiceAccountRef.Name == "" {
 		instance.Spec.ServiceAccountRef.Name = "default"
 		needsUpdate = false
 	}
+
 	for i := range instance.Spec.Resources {
 		defaultSet := strset.New(defaultExcludedPaths...)
 		currentSet := strset.New(instance.Spec.Resources[i].ExcludedPaths...)
@@ -287,7 +297,54 @@ func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.Reso
 			instance.Spec.Resources[i].ExcludedPaths = strset.Union(defaultSet, currentSet).List()
 			needsUpdate = false
 		}
+
+		// If the resource doesn't have a namespace specified and is a namespaced object,
+		// we add the namespace of the ResourceLocker CR.
+		lockedResource, err := getLockedResource(&instance.Spec.Resources[i].Object)
+		if err != nil {
+			// failed to get the unstructured object from the resources array. If we fail here
+			// we cannot inject anything into the resource so we need the else clause below.
+			log.Error(err, "Unable to get locked resource for object: ", "object", instance.Spec.Resources[i].Object)
+		} else {
+			// check if the resource has the namespace field already set. If not, check if we need
+			// to fix it.
+			var isNamespaced bool
+			if lockedResource.GetNamespace() == "" {
+				// the namespace field is blank so we check to see if it's a namespaced or cluster-scoped resource.
+				// only namespaced resources need a namespace injected.
+				isNamespaced, err = r.isNamespaced(lockedResource)
+				if err != nil {
+					// we were unable to get info from the server telling us the resource was namespaced.
+					log.Error(err, "Unable to determine if locked resource is namespaced", "object", instance.Spec.Resources[i].Object)
+				}
+			}
+
+			if isNamespaced {
+				// the resource is namespaced and is missing a namespace value, so we need
+				// to inject one.
+				log.V(1).Info("Locked object found without namespace. Injecting namespace for namespaced object.",
+					"Object.Metadata.Name", lockedResource.GetName(),
+					"NamespaceToSet", instance.Namespace)
+				lockedResource.SetNamespace(instance.Namespace)
+				bb, err := yaml.Marshal(lockedResource)
+				if err != nil {
+					// Somehow we've corrupted the yaml in translation.
+					log.Error(err, "Unable to marshal the locked resource to yaml", "lockedResource", lockedResource, "instance", instance)
+				} else {
+					jsonbb, err := yaml.YAMLToJSON(bb)
+					if err != nil {
+						log.Error(err, "Error transforming yaml to json", "bytes", bb)
+					} else {
+						// If we got here, the update and the namespace injection was successful
+						// so we update needsUpdate
+						instance.Spec.Resources[i].Object.Raw = jsonbb
+						needsUpdate = false
+					}
+				}
+			}
+		}
 	}
+
 	for i := range instance.Spec.Patches {
 		if instance.Spec.Patches[i].PatchType == "" {
 			instance.Spec.Patches[i].PatchType = types.StrategicMergePatchType
@@ -302,7 +359,44 @@ func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.Reso
 		util.RemoveFinalizer(instance, controllerName)
 		needsUpdate = false
 	}
+
 	return needsUpdate
+}
+
+// isNamespaced returns true if the provided resource is namespaced.
+func (r *ReconcileResourceLocker) isNamespaced(object *unstructured.Unstructured) (bool, error) {
+	var namespaced bool
+
+	// establish the discovery client
+	dc, err := r.GetDiscoveryClient()
+	if err != nil {
+		log.Error(err, "Unable to get discovery client while "+
+			"trying to determine if object is namespaced.")
+		return namespaced, err
+	}
+
+	// get gvk for the unstructured object
+	gvk := object.GroupVersionKind()
+
+	// get the resources for the relevant gv
+	resourceList, err := dc.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
+	if err != nil {
+		log.Error(err, "Unable to get server resources for group version while "+
+			"trying to determine if object is namespaced",
+			"GroupVersion", gvk.GroupVersion().String(),
+			"Object", object.GetName())
+		return namespaced, err
+	}
+
+	// for the returned resources, check to see if they're namespaced
+	for _, apiResource := range resourceList.APIResources {
+		if apiResource.Kind == gvk.Kind {
+			namespaced = apiResource.Namespaced
+			return namespaced, nil
+		}
+	}
+
+	return namespaced, errs.New("unable to find type: " + gvk.String() + " in server")
 }
 
 func (r *ReconcileResourceLocker) getResourceLockerFromInstance(instance *redhatcopv1alpha1.ResourceLocker) (*ResourceLocker, error) {
