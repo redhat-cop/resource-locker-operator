@@ -1,0 +1,26 @@
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: ResourceLocker
+metadata:
+  name: example-patch-complex
+spec:
+  serviceAccountRef:
+    name: default
+  patches:
+  - targetObjectRef:
+      apiVersion: v1
+      kind: ServiceAccount
+      name: test
+      namespace: resource-locker-test
+    patchTemplate: |
+      metadata:
+        annotations:
+          {{ (index . 0).metadata.name }}: {{ (index . 1).metadata.name }}
+    patchType: application/strategic-merge-patch+json
+    sourceObjectRefs:
+    - apiVersion: v1
+      kind: Namespace
+      name: resource-locker-test
+    - apiVersion: v1
+      kind: ServiceAccount
+      name: default
+      namespace: resource-locker-test

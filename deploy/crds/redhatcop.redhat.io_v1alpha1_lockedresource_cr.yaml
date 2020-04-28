@@ -1,0 +1,16 @@
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: ResourceLocker
+metadata:
+  name: example-locked-resource
+spec:
+  resources:
+  - object:
+      apiVersion: v1
+      data:
+        isLocked: dHJ1ZQ==
+      kind: Secret
+      metadata:
+        name: simple-locked-secret
+      type: Opaque
+  serviceAccountRef:
+    name: resource-locker-operator
