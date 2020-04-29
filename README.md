@@ -112,6 +112,8 @@ Resources created this way are allowed to drift from the desired state only in t
 
 and in most cases should be the right choice.
 
+For a concrete example of how to lock a resource, see [EXAMPLES.md](EXAMPLES.md).
+
 ## Resource Patch Locking
 
 An example of patch is the following:
