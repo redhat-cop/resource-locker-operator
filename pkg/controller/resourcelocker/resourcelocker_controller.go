@@ -477,7 +477,9 @@ func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]lockedpatch.Locke
 			SourceObjectRefs: patch.SourceObjectRefs,
 			TargetObjectRef:  patch.TargetObjectRef,
 			PatchType:        patch.PatchType,
-			PatchTemplate:    patch.PatchTemplate}
+			PatchTemplate:    patch.PatchTemplate,
+			ID:               patch.ID,
+		}
 
 		template, err := template.New(patch.PatchTemplate).Parse(patch.PatchTemplate)
 		if err != nil {

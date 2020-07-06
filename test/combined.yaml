@@ -24,6 +24,7 @@ spec:
       kind: ServiceAccount
       name: default
       namespace: resource-locker-test
+    id: patch1  
   - targetObjectRef:
       apiVersion: v1
       kind: ServiceAccount
@@ -44,6 +45,7 @@ spec:
       name: default
       namespace: resource-locker-test
       fieldPath: $.metadata.uid
+    id: patch2  
   resources:
   - object:
       apiVersion: networking.k8s.io/v1

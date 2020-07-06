@@ -209,6 +209,13 @@ export KUBERNETES_SERVICE_PORT=6443
 OPERATOR_NAME='resource-locker-operator' operator-sdk --verbose run local --watch-namespace "" --operator-flags="--zap-level=debug"
 ```
 
+To re-run the code generation, to the following
+
+```shell
+operator-sdk generate k8s --verbose
+operator-sdk generate crds --crd-version=v1beta1 --verbose
+```
+
 ## Release Process
 
 To release execute the following:
