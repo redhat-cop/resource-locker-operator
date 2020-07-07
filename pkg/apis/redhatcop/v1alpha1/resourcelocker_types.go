@@ -18,7 +18,8 @@ type ResourceLockerSpec struct {
 
 	// Patches is a list of patches that should be enforced at runtime.
 	// +kubebuilder:validation:Optional
-	// +listType=atomic
+	// +listType="map"
+	// +listMapKey="id"
 	Patches []Patch `json:"patches,omitempty"`
 
 	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
@@ -31,6 +32,7 @@ type ResourceLockerSpec struct {
 // +k8s:openapi-gen=true
 type Resource struct {
 	// +kubebuilder:validation:Required
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Object runtime.RawExtension `json:"object"`
 	// +kubebuilder:validation:Optional
 	// +listType=set

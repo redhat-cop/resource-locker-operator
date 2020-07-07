@@ -145,6 +145,7 @@ spec:
       kind: ServiceAccount
       name: default
       namespace: resource-locker-test
+    id: sa-annotation  
 ```
 
 A patch is defined by the following:
@@ -157,16 +158,17 @@ A patch is defined by the following:
   * `application/merge-patch+json`
   * `application/strategic-merge-patch+json`
   * `application/apply-patch+yaml`
+* an `id` which must be unique in the array of patches.  
   
 If not specified the patchType will be defaulted to: `application/strategic-merge-patch+json`
 
 ## Multitenancy
 
-The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially any objects (including secrets), in reality one needs to have been given permission to do so via permission granted to the service referenced account.
+The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially any objects (including secrets), in reality one needs to have been given permission to do so via permissions granted to the referenced service account.
 This allows for the following:
 
-1. Run the operator with relatively restricted permissions.
-2. Prevent privilege escalation by making sure that used permissions have actually been explicitly granted.
+1. Running the operator with relatively restricted permissions.
+2. Preventing privilege escalation by making sure that used permissions have actually been explicitly granted.
 
 The following permissions are needed on a locked resource object type: `List`, `Get`, `Watch`, `Create`, `Update`, `Patch`.
 
@@ -177,14 +179,6 @@ The following permissions are needed on a target reference object type: `List`, 
 ## Deleting Resources
 
 When a `ResourceLocker` is removed, `LockedResources` will be deleted by the finalizer. Patches will be left untouched because there is no clear way to know how to restore an object to the state before the application of a patch.
-
-If a `ResourceLocker` is updated deleting a `LockedResource`, the operator will try its best to determine which resource was deleted by looking at the following:
-
-* its internal memory state.
-* the `kubectl.kubernetes.io/last-applied-configuration`.
-* the status reported by the CR.
-
-LockedResources reported from these three sources of information will be compared with the desired set of resources. Resources that do not appear in the desired set will be deleted. This method is not 100% failsafe. In particular, if someone disables the operator and at the same time changes a ResourceLocker CR by deleting a locked resource, it is possible that a locker resource becomes orphaned and be left un-managed. Again the operator does not try to undo patches when `LockedPatches` are removed from a `ResourceLocker` CR.
 
 ## Local Development
 
@@ -233,4 +227,4 @@ use this version format: vM.m.z
 * <s>Initialization/Finalization</s>
   * <s>resource deletion should be based on the last recorded status on the status object, change the current approach</s>
 * <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).</s>
-* Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).  
+* <s>Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).</s> This was achieved by creating namespaced watchers.  

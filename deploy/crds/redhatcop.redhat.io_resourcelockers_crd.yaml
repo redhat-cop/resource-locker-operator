@@ -169,7 +169,9 @@ spec:
                   - targetObjectRef
                   type: object
                 type: array
-                x-kubernetes-list-type: atomic
+                x-kubernetes-list-map-keys:
+                - id
+                x-kubernetes-list-type: map
               resources:
                 description: Resources is a list of resource manifests that should
                   be locked into the specified configuration
@@ -183,6 +185,7 @@ spec:
                       x-kubernetes-list-type: set
                     object:
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   required:
                   - object
                   type: object
