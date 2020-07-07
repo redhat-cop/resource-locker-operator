@@ -5,14 +5,19 @@ metadata:
 spec:
   resources:
   - object:
-      apiVersion: v1
-      kind: ResourceQuota
+      apiVersion: route.openshift.io/v1
+      kind: Route
       metadata:
-        name: small-size
+        name: test-route
         namespace: resource-locker-test
       spec:
-        hard:
-          requests.cpu: "4" 
-          requests.memory: "2Gi"
+        host: grafana-istio-system.apps.cluster-4cac.sandbox456.opentlc.com
+        tls:
+          termination: reencrypt
+        to:
+          kind: Service
+          name: grafana
+          weight: 100
+        wildcardPolicy: None
   serviceAccountRef: 
     name: default      

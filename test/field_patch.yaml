@@ -25,4 +25,5 @@ spec:
       kind: ServiceAccount
       name: default
       namespace: resource-locker-test
-      fieldPath: $.metadata.uid   
+      fieldPath: $.metadata.uid
+    id: patch1  

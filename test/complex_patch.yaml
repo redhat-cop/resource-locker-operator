@@ -15,6 +15,7 @@ spec:
       metadata:
         annotations:
           {{ (index . 0).metadata.name }}: {{ (index . 1).metadata.name }}
+    id: patch1      
     patchType: application/strategic-merge-patch+json
     sourceObjectRefs:
     - apiVersion: v1
