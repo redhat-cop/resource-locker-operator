@@ -302,11 +302,11 @@ func (r *ReconcileResourceLocker) IsInitialized(instance *redhatcopv1alpha1.Reso
 			needsUpdate = true
 		}
 	}
-	if len(instance.Spec.Resources) > 0 && !util.HasFinalizer(instance, controllerName) {
+	if len(instance.Spec.Resources)+len(instance.Spec.Patches) > 0 && !util.HasFinalizer(instance, controllerName) {
 		util.AddFinalizer(instance, controllerName)
 		needsUpdate = true
 	}
-	if len(instance.Spec.Resources) == 0 && util.HasFinalizer(instance, controllerName) {
+	if len(instance.Spec.Resources)+len(instance.Spec.Patches) == 0 && util.HasFinalizer(instance, controllerName) {
 		util.RemoveFinalizer(instance, controllerName)
 		needsUpdate = true
 	}
@@ -423,6 +423,7 @@ func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]lockedpatch.Locke
 
 // manageCleanupLogic delete resources. We don't touch pacthes because we cannot undo them.
 func (r *ReconcileResourceLocker) manageCleanUpLogic(instance *redhatcopv1alpha1.ResourceLocker) error {
+	log.V(1).Info("terminating resource locker", "instance", instance)
 	err := r.Terminate(instance, true)
 	if err != nil {
 		log.Error(err, "unable to terminate enforcing reconciler for", "instance", instance)
