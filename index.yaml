@@ -2,8 +2,24 @@ apiVersion: v1
 entries:
   resource-locker-operator:
   - apiVersion: v1
+    appVersion: v0.1.3
+    created: "2020-07-24T16:03:49.177402315Z"
+    description: Helm chart that deploys resource-locker-operator
+    digest: d7b425e37d78aa0f4b27ba3df04a924acfe528798430eb9b00181eaa2890fe3c
+    engine: gotpl
+    keywords:
+    - resource-enforcing
+    - patches-enforcing
+    - operator
+    name: resource-locker-operator
+    sources:
+    - https://github.com/redhat-cop/resource-locker-operator
+    urls:
+    - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-v0.1.3.tgz
+    version: v0.1.3
+  - apiVersion: v1
     appVersion: v0.1.2
-    created: "2019-11-30T18:53:41.539564226Z"
+    created: "2020-07-24T16:03:49.176810727Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f945e6f6a5474238c87fe1912939019678debaa18d2eb8fc63a712a4e4e0da80
     engine: gotpl
@@ -19,7 +35,7 @@ entries:
     version: v0.1.2
   - apiVersion: v1
     appVersion: v0.1.1
-    created: "2019-11-30T18:53:41.539229895Z"
+    created: "2020-07-24T16:03:49.175866104Z"
     description: Helm chart that deploys resource-locker-operator
     digest: c0a4d3572e7262f8ba42e8a91424d3a82e65bb286276a8145d0156a2b770200c
     engine: gotpl
@@ -35,7 +51,7 @@ entries:
     version: v0.1.1
   - apiVersion: v1
     appVersion: v0.1.0
-    created: "2019-11-30T18:53:41.538852659Z"
+    created: "2020-07-24T16:03:49.175561656Z"
     description: Helm chart that deploys resource-locker-operator
     digest: b679c71b3ecc5fb33cec0bac840203a88ff95689cd5742684d5539391854e7af
     engine: gotpl
@@ -51,7 +67,7 @@ entries:
     version: v0.1.0
   - apiVersion: v1
     appVersion: pre0.1.0
-    created: "2019-11-30T18:53:41.53848674Z"
+    created: "2020-07-24T16:03:49.175185791Z"
     description: Helm chart that deploys resource-locker-operator
     digest: cfcc2982c20e9e65c2b87aa48c572134509f27a9cd5bfcb43268860ac84bee29
     engine: gotpl
@@ -65,4 +81,4 @@ entries:
     urls:
     - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-pre0.1.0.tgz
     version: pre0.1.0
-generated: "2019-11-30T18:53:41.53748272Z"
+generated: "2020-07-24T16:03:49.174666137Z"
