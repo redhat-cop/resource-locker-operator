@@ -69,7 +69,7 @@ Here are the instructions to install the latest release creating the manifest di
 
 ```shell
 git clone git@github.com:redhat-cop/resource-locker-operator.git; cd resource-locker-operator
-oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yamlredhatcop.redhat.io_resourcelockers_crd.yaml
+oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yaml
 oc new-project resource-locker-operator
 oc -n resource-locker-operator apply -f deploy
 ```
