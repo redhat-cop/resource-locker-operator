@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	errs "errors"
 	"os"
-	"text/template"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/redhat-cop/operator-utils/pkg/util/lockedresourcecontroller"
@@ -155,20 +154,21 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 	// TODO manage lifecycle
 
 	lockedResources, err := getLockedResources(instance)
+
 	if err != nil {
 		log.Error(err, "unable to get resources for", "instance", instance)
-		return r.ManageError(instance, err)
-	}
-
-	lockedPatches, err := getPatches(instance)
-	if err != nil {
-		log.Error(err, "unable to get patches for", "instance", instance)
 		return r.ManageError(instance, err)
 	}
 
 	config, err := r.getRestConfigFromInstance(instance)
 	if err != nil {
 		log.Error(err, "unable to get restconfig for", "instance", instance)
+		return r.ManageError(instance, err)
+	}
+
+	lockedPatches, err := lockedpatch.GetLockedPatches(instance.Spec.Patches, config)
+	if err != nil {
+		log.Error(err, "unable to get patches for", "instance", instance)
 		return r.ManageError(instance, err)
 	}
 
@@ -397,28 +397,6 @@ func (r *ReconcileResourceLocker) getRestConfigFromInstance(instance *redhatcopv
 		},
 	}
 	return &config, nil
-}
-
-func getPatches(instance *redhatcopv1alpha1.ResourceLocker) ([]lockedpatch.LockedPatch, error) {
-	patches := []lockedpatch.LockedPatch{}
-	for _, patch := range instance.Spec.Patches {
-		myPatch := lockedpatch.LockedPatch{
-			SourceObjectRefs: patch.SourceObjectRefs,
-			TargetObjectRef:  patch.TargetObjectRef,
-			PatchType:        patch.PatchType,
-			PatchTemplate:    patch.PatchTemplate,
-			ID:               patch.ID,
-		}
-
-		template, err := template.New(patch.PatchTemplate).Parse(patch.PatchTemplate)
-		if err != nil {
-			log.Error(err, "unable to parse ", "template", patch.PatchTemplate)
-			return []lockedpatch.LockedPatch{}, err
-		}
-		myPatch.Template = *template
-		patches = append(patches, myPatch)
-	}
-	return patches, nil
 }
 
 // manageCleanupLogic delete resources. We don't touch pacthes because we cannot undo them.
