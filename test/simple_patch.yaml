@@ -10,7 +10,7 @@ spec:
       apiVersion: v1
       kind: ServiceAccount
       name: test
-      namespace: resource-locker-test 
+      namespace: resource-locker-test
     patchTemplate: |
       metadata:
         annotations:
