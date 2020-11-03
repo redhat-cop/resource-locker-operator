@@ -16,8 +16,12 @@ spec:
       serviceAccountName: resource-locker-operator
       containers:
         - name: resource-locker-operator
-          # Replace this with the built image name
-          image: quay.io/redhat-cop/resource-locker-operator:{{ .Values.image_tag }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.image.existingPullSecret }}
+          imagePullSecrets:
+            - name: {{ . }}
+          {{- end }}
           command:
           - resource-locker-operator
           imagePullPolicy: Always

@@ -1,1 +1,6 @@
-image_tag: 1.2.3
+image:
+  registry: quay.io
+  repository: redhat-cop/resource-locker-operator
+  tag: 1.2.3
+  pullPolicy: IfNotPresent
+  # existingPullSecret: my-image-pull-secret
