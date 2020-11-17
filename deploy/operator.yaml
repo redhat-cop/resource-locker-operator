@@ -16,7 +16,7 @@ spec:
       containers:
         - name: resource-locker-operator
           # Replace this with the built image name
-          image: quay.io/redhat-cop/resource-locker-operator:v0.1.4
+          image: quay.io/redhat-cop/resource-locker-operator:v0.1.5
           command:
           - resource-locker-operator
           imagePullPolicy: Always

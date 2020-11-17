@@ -5,7 +5,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // ResourceLockerSpec defines the desired state of ResourceLocker
@@ -20,7 +19,7 @@ type ResourceLockerSpec struct {
 	// +kubebuilder:validation:Optional
 	// +listType="map"
 	// +listMapKey="id"
-	Patches []Patch `json:"patches,omitempty"`
+	Patches []apis.Patch `json:"patches,omitempty"`
 
 	// ServiceAccountRef is the service account to be used to run the controllers associated with this configuration
 	// +kubebuilder:validation:Optional
@@ -37,32 +36,6 @@ type Resource struct {
 	// +kubebuilder:validation:Optional
 	// +listType=set
 	ExcludedPaths []string `json:"excludedPaths,omitempty"`
-}
-
-// Patch describe a patch to be enforced at runtime
-// +k8s:openapi-gen=true
-type Patch struct {
-	// ID represent a unique identifier for the patch in the array of patches oc this CR
-	// +kubebuilder:validation:Required
-	ID string `json:"id"`
-	// SourceObject refs is an array of references to source objects that will be used as input for the template processing
-	// +kubebuilder:validation:Optional
-	// +listType=atomic
-	SourceObjectRefs []corev1.ObjectReference `json:"sourceObjectRefs,omitempty"`
-
-	// TargetObjectRef is a reference to the object to which the patch should be applied.
-	// +kubebuilder:validation:Required
-	TargetObjectRef corev1.ObjectReference `json:"targetObjectRef"`
-
-	// PatchType is the type of patch to be applied, one of "application/json-patch+json"'"application/merge-patch+json","application/strategic-merge-patch+json","application/apply-patch+yaml"
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum="application/json-patch+json";"application/merge-patch+json";"application/strategic-merge-patch+json";"application/apply-patch+yaml"
-	// kubebuilder:default:="application/strategic-merge-patch+json"
-	PatchType types.PatchType `json:"patchType,omitempty"`
-
-	// PatchTemplate is a go template that will be resolved using the SourceObjectRefs as parameters. The result must be a valid patch based on the patch type and the target object.
-	// +kubebuilder:validation:Required
-	PatchTemplate string `json:"patchTemplate"`
 }
 
 // ResourceLockerStatus defines the observed state of ResourceLocker
