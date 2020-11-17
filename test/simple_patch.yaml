@@ -15,5 +15,7 @@ spec:
       metadata:
         annotations:
           hello: bye
+          test3: test3
+          test6: test6
     patchType: application/strategic-merge-patch+json
     id: patch1    
