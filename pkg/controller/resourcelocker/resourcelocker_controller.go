@@ -119,7 +119,7 @@ func (r *ReconcileResourceLocker) Reconcile(request reconcile.Request) (reconcil
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	log.V(1).Info("reconciling", "instance", instance)
 	if ok, err := r.IsValid(instance); !ok {
 		return r.ManageError(instance, err)
 	}
