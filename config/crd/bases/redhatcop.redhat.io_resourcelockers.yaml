@@ -25,7 +25,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ResourceLocker Represents the intetiont to create and neforce a
+      description: ResourceLocker Represents the intetion to create and enforce a
         set of resources and/or patches.
       properties:
         apiVersion:

@@ -14,7 +14,7 @@ rules:
   verbs:
   - get
   - list
-  - patch
+  - watch
 - apiGroups:
   - redhatcop.redhat.io
   resources:

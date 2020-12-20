@@ -239,12 +239,12 @@ make docker-push IMG=quay.io/$repo/resource-locker-operator:latest
 make manifests
 make bundle IMG=quay.io/$repo/resource-locker-operator:latest
 operator-sdk bundle validate ./bundle --select-optional name=operatorhub
-make bundle-build BUNDLE_IMG=quay.io/$repo/resource-locker-operator-controller-bundle:latest
-podman push quay.io/$repo/resource-locker-operator-controller-bundle:latest
-operator-sdk bundle validate quay.io/$repo/resource-locker-operator-controller-bundle:latest --select-optional name=operatorhub
+make bundle-build BUNDLE_IMG=quay.io/$repo/resource-locker-operator-bundle:latest
+podman push quay.io/$repo/resource-locker-operator-bundle:latest
+operator-sdk bundle validate quay.io/$repo/resource-locker-operator-bundle:latest --select-optional name=operatorhub
 oc new-project resource-locker-operator
 operator-sdk cleanup resource-locker-operator -n resource-locker-operator
-operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator quay.io/$repo/resource-locker-operator-controller-bundle:latest
+operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator quay.io/$repo/resource-locker-operator-bundle:latest
 ```
 
 ## Releasing

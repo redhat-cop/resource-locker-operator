@@ -74,7 +74,7 @@ func (m *ResourceLocker) SetEnforcingReconcileStatus(reconcileStatus apis.Enforc
 	m.Status.EnforcingReconcileStatus = reconcileStatus
 }
 
-// ResourceLocker Represents the intetiont to create and neforce a set of resources and/or patches.
+// ResourceLocker Represents the intetion to create and enforce a set of resources and/or patches.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
