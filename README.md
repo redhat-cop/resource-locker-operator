@@ -40,68 +40,6 @@ It contains:
 
 For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
 
-## Deploying the Operator
-
-This is a cluster-level operator that you can deploy in any namespace, `resource-locker-operator` is recommended.
-
-You can either deploy it using [`Helm`](https://helm.sh/) or creating the manifests directly.
-
-### Deploying with Helm
-
-Here are the instructions to install the latest release with Helm.
-
-```shell
-oc new-project resource-locker-operator
-
-helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
-helm repo update
-export resource_locker_operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
-
-helm fetch resource-locker-operator/resource-locker-operator --version ${resource_locker_operator_chart_version}
-helm template resource-locker-operator-${resource_locker_operator_chart_version}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
-
-rm resource-locker-operator-${resource_locker_operator_chart_version}.tgz
-```
-
-### Deploying directly with manifests
-
-Here are the instructions to install the latest release creating the manifest directly in OCP.
-
-```shell
-git clone git@github.com:redhat-cop/resource-locker-operator.git; cd resource-locker-operator
-oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yaml
-oc new-project resource-locker-operator
-oc -n resource-locker-operator apply -f deploy
-```
-
-### Deploying from OperatorHub
-
-If you want to utilize the Operator Lifecycle Manager (OLM) to install this operator, you can do so in two ways: from the UI or the CLI.
-
-#### Deploying from OperatorHub UI
-
-* If you would like to launch this operator from the UI, you'll need to navigate to the OperatorHub tab in the console. Before starting, make sure you've created the namespace that you want to install this operator to with the following:
-
-```shell
-oc new-project resource-locker-operator
-```
-
-* Once there, you can search for this operator by name: `resource locker operator`. This will then return an item for our operator and you can select it to get started. Once you've arrived here, you'll be presented with an option to install, which will begin the process.
-* After clicking the install button, you can then select the namespace that you would like to install this to as well as the installation strategy you would like to proceed with (`Automatic` or `Manual`).
-* Once you've made your selection, you can select `Subscribe` and the installation will begin. After a few moments you can go ahead and check your namespace and you should see the operator running.
-
-#### Deploying from OperatorHub using CLI
-
-If you'd like to launch this operator from the command line, you can use the manifests contained in this repository by running the following:
-
-oc new-project resource-locker-operator
-
-```shell
-oc apply -f deploy/olm-deploy -n resource-locker-operator
-```
-
-This will create the appropriate OperatorGroup and Subscription and will trigger OLM to launch the operator in the specified namespace.
-
 ## Resources Locking
 
 An example of a resource locking configuration is the following:
@@ -208,51 +146,132 @@ The following permissions are needed on a target reference object type: `List`, 
 
 When a `ResourceLocker` is removed, `LockedResources` will be deleted by the finalizer. Patches will be left untouched because there is no clear way to know how to restore an object to the state before the application of a patch.
 
-## Local Development
+## Deploying the Operator
 
-Execute the following steps to develop the functionality locally. It is recommended that development be done using a cluster with `cluster-admin` permissions.
+This is a cluster-level operator that you can deploy in any namespace, `resource-locker-operator` is recommended.
+
+You can either deploy it using [`Helm`](https://helm.sh/) or creating the manifests directly.
+
+### Deploying with Helm
+
+Here are the instructions to install the latest release with Helm.
 
 ```shell
-go mod download
+oc new-project resource-locker-operator
+
+helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
+helm repo update
+export resource_locker_operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
+
+helm fetch resource-locker-operator/resource-locker-operator --version ${resource_locker_operator_chart_version}
+helm template resource-locker-operator-${resource_locker_operator_chart_version}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
+
+rm resource-locker-operator-${resource_locker_operator_chart_version}.tgz
 ```
 
-optionally:
+### Deploying directly with manifests
+
+Here are the instructions to install the latest release creating the manifest directly in OCP.
 
 ```shell
-go mod vendor
-```
-
-Using the [operator-sdk](https://github.com/operator-framework/operator-sdk), run the operator locally:
-
-```shell
+git clone git@github.com:redhat-cop/resource-locker-operator.git; cd resource-locker-operator
 oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yaml
+oc new-project resource-locker-operator
+oc -n resource-locker-operator apply -f deploy
+```
+
+### Deploying from OperatorHub
+
+If you want to utilize the Operator Lifecycle Manager (OLM) to install this operator, you can do so in two ways: from the UI or the CLI.
+
+#### Deploying from OperatorHub UI
+
+* If you would like to launch this operator from the UI, you'll need to navigate to the OperatorHub tab in the console. Before starting, make sure you've created the namespace that you want to install this operator to with the following:
+
+```shell
+oc new-project resource-locker-operator
+```
+
+* Once there, you can search for this operator by name: `resource locker operator`. This will then return an item for our operator and you can select it to get started. Once you've arrived here, you'll be presented with an option to install, which will begin the process.
+* After clicking the install button, you can then select the namespace that you would like to install this to as well as the installation strategy you would like to proceed with (`Automatic` or `Manual`).
+* Once you've made your selection, you can select `Subscribe` and the installation will begin. After a few moments you can go ahead and check your namespace and you should see the operator running.
+
+#### Deploying from OperatorHub using CLI
+
+If you'd like to launch this operator from the command line, you can use the manifests contained in this repository by running the following:
+
+oc new-project resource-locker-operator
+
+```shell
+oc apply -f deploy/olm-deploy -n resource-locker-operator
+```
+
+This will create the appropriate OperatorGroup and Subscription and will trigger OLM to launch the operator in the specified namespace.
+
+## Development
+
+## Running the operator locally
+
+```shell
+make install
+oc new-project resource-locker-operator-local
+kustomize build ./config/local-development | oc apply -f - -n resource-locker-operator-local
+#oc apply -f config/rbac/role.yaml -n resource-locker-operator-local
+#oc apply -f config/rbac/role_binding.yaml -n resource-locker-operator-local
+export token=$(oc serviceaccounts get-token 'default' -n resource-locker-operator-local)
+oc login --token ${token}
 export KUBERNETES_SERVICE_HOST=<your kube host>
 export KUBERNETES_SERVICE_PORT=6443
-OPERATOR_NAME='resource-locker-operator' operator-sdk --verbose run local --watch-namespace "" --operator-flags="--zap-level=debug"
+make run ENABLE_WEBHOOKS=false
 ```
 
-To re-run the code generation, to the following
+## Building/Pushing the operator image
 
 ```shell
-operator-sdk generate k8s --verbose
-operator-sdk generate crds --crd-version=v1beta1 --verbose
+export repo=raffaelespazzoli #replace with yours
+make docker-build IMG=quay.io/$repo/resource-locker-operator:latest
+make docker-push IMG=quay.io/$repo/resource-locker-operator:latest
 ```
 
-## Release Process
-
-To release execute the following:
+## Deploy to OLM via bundle
 
 ```shell
-git tag -a "<version>" -m "release <version>"
-git push upstream <version>
+make manifests
+make bundle IMG=quay.io/$repo/resource-locker-operator:latest
+operator-sdk bundle validate ./bundle --select-optional name=operatorhub
+make bundle-build BUNDLE_IMG=quay.io/$repo/resource-locker-operator-bundle:latest
+podman push quay.io/$repo/resource-locker-operator-bundle:latest
+operator-sdk bundle validate quay.io/$repo/resource-locker-operator-bundle:latest --select-optional name=operatorhub
+oc new-project resource-locker-operator
+operator-sdk cleanup resource-locker-operator -n resource-locker-operator
+operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator quay.io/$repo/resource-locker-operator-bundle:latest
 ```
 
-use this version format: vM.m.z
+## Releasing
 
-## Roadmap
+```shell
+git tag -a "<tagname>" -m "<commit message>"
+git push upstream <tagname>
+```
 
-* <s>Add status and error management</s>
-* <s>Initialization/Finalization</s>
-  * <s>resource deletion should be based on the last recorded status on the status object, change the current approach</s>
-* <s>Add ability to exclude section of locked objects (defaults to: status, metadata, replicas).</s>
-* <s>Add ability to watch on specific objects, not just types (https://github.com/kubernetes-sigs/controller-runtime/issues/671).</s> This was achieved by creating namespaced watchers.  
+If you need to remove a release:
+
+```shell
+git tag -d <tagname>
+git push upstream --delete <tagname>
+```
+
+If you need to "move" a release to the current main
+
+```shell
+git tag -f <tagname>
+git push upstream -f <tagname>
+```
+
+### Cleaning up
+
+```shell
+operator-sdk cleanup resource-locker-operator -n resource-locker-operator
+oc delete operatorgroup operator-sdk-og
+oc delete catalogsource resource-locker-operator-catalog
+```
