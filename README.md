@@ -1,6 +1,7 @@
 # Resource Locker Operator
 
-[![Build Status](https://travis-ci.org/redhat-cop/resource-locker-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/resource-locker-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/resource-locker-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/resource-locker-operator)
+![build status](https://github.com/redhat-cop/resource-locker-operator/workflows/push/badge.svg)
+![Docker Repository on Quay](https://quay.io/repository/redhat-cop/resource-locker-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/resource-locker-operator)
 
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
