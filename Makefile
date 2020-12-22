@@ -16,7 +16,7 @@ IMG ?= controller:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-OPERATOR_NAME ?= $(basename `pwd`) 
+OPERATOR_NAME ?=$(shell basename -z `pwd`)
 
 CHART_REPO_URL ?= http://example.com
 HELM_REPO_DEST ?= /tmp/gh-pages
