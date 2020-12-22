@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -54,7 +55,7 @@ type ResourceLockerReconciler struct {
 // +kubebuilder:rbac:groups=redhatcop.redhat.io,resources=resourcelockers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=redhatcop.redhat.io,resources=resourcelockers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;secrets,verbs=get;list;watch
-
+// +kubebuilder:rbac:groups="",resources=events,verbs=get,list,watch,create,patch
 func (r *ResourceLockerReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resourcelocker", req.NamespacedName)
 
@@ -364,7 +365,7 @@ func (r *ResourceLockerReconciler) manageCleanUpLogic(instance *redhatcopv1alpha
 
 func (r *ResourceLockerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&redhatcopv1alpha1.ResourceLocker{}).
+		For(&redhatcopv1alpha1.ResourceLocker{}, builder.WithPredicates(util.ResourceGenerationOrFinalizerChangedPredicate{})).
 		Watches(&source.Channel{Source: r.GetStatusChangeChannel()}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
 }
