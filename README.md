@@ -150,35 +150,7 @@ When a `ResourceLocker` is removed, `LockedResources` will be deleted by the fin
 
 This is a cluster-level operator that you can deploy in any namespace, `resource-locker-operator` is recommended.
 
-You can either deploy it using [`Helm`](https://helm.sh/) or creating the manifests directly.
-
-### Deploying with Helm
-
-Here are the instructions to install the latest release with Helm.
-
-```shell
-oc new-project resource-locker-operator
-
-helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
-helm repo update
-export resource_locker_operator_chart_version=$(helm search resource-locker-operator/resource-locker-operator | grep resource-locker-operator/resource-locker-operator | awk '{print $2}')
-
-helm fetch resource-locker-operator/resource-locker-operator --version ${resource_locker_operator_chart_version}
-helm template resource-locker-operator-${resource_locker_operator_chart_version}.tgz --namespace resource-locker-operator | oc apply -f - -n resource-locker-operator
-
-rm resource-locker-operator-${resource_locker_operator_chart_version}.tgz
-```
-
-### Deploying directly with manifests
-
-Here are the instructions to install the latest release creating the manifest directly in OCP.
-
-```shell
-git clone git@github.com:redhat-cop/resource-locker-operator.git; cd resource-locker-operator
-oc apply -f deploy/crds/redhatcop.redhat.io_resourcelockers_crd.yaml
-oc new-project resource-locker-operator
-oc -n resource-locker-operator apply -f deploy
-```
+It is recommended to deploy this operator via [`OperatorHub`](https://operatorhub.io/), but you can also deploy it using [`Helm`](https://helm.sh/).
 
 ### Deploying from OperatorHub
 
@@ -196,6 +168,8 @@ oc new-project resource-locker-operator
 * After clicking the install button, you can then select the namespace that you would like to install this to as well as the installation strategy you would like to proceed with (`Automatic` or `Manual`).
 * Once you've made your selection, you can select `Subscribe` and the installation will begin. After a few moments you can go ahead and check your namespace and you should see the operator running.
 
+![Resource Locker Operator](./media/resource-locker-operator.png)
+
 #### Deploying from OperatorHub using CLI
 
 If you'd like to launch this operator from the command line, you can use the manifests contained in this repository by running the following:
@@ -203,10 +177,28 @@ If you'd like to launch this operator from the command line, you can use the man
 oc new-project resource-locker-operator
 
 ```shell
-oc apply -f deploy/olm-deploy -n resource-locker-operator
+oc apply -f config/operatorhub -n resource-locker-operator
 ```
 
 This will create the appropriate OperatorGroup and Subscription and will trigger OLM to launch the operator in the specified namespace.
+
+### Deploying with Helm
+
+Here are the instructions to install the latest release with Helm.
+
+```shell
+oc new-project resource-locker-operator
+helm repo add resource-locker-operator https://redhat-cop.github.io/resource-locker-operator
+helm repo update
+helm install resource-locker-operator resource-locker-operator/resource-locker-operator
+```
+
+This can later be updated with the following commands:
+
+```shell
+helm repo update
+helm upgrade resource-locker-operator resource-locker-operator/resource-locker-operator
+```
 
 ## Development
 
