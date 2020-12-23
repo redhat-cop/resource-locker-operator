@@ -55,7 +55,7 @@ type ResourceLockerReconciler struct {
 // +kubebuilder:rbac:groups=redhatcop.redhat.io,resources=resourcelockers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=redhatcop.redhat.io,resources=resourcelockers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;secrets,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=events,verbs=get,list,watch,create,patch
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
 func (r *ResourceLockerReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resourcelocker", req.NamespacedName)
 
