@@ -1,6 +1,9 @@
 # Resource Locker Operator
 
 ![build status](https://github.com/redhat-cop/resource-locker-operator/workflows/push/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/redhat-cop/resource-locker-operator)](https://goreportcard.com/report/github.com/redhat-cop/resource-locker-operator)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/redhat-cop/resource-locker-operator)
+
 
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
