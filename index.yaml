@@ -2,11 +2,27 @@ apiVersion: v1
 entries:
   resource-locker-operator:
   - apiVersion: v1
+    appVersion: v1.0.0
+    created: "2020-12-30T15:24:09.308941635Z"
+    description: Helm chart that deploys resource-locker-operator
+    digest: 7357f24a9daeef5d5722d56f3d81c11390a4fea8562e450e97cebaaeeede63cc
+    keywords:
+    - volume
+    - storage
+    - csi
+    - expansion
+    - monitoring
+    name: resource-locker-operator
+    sources:
+    - https://github.com/redhat-cop/resource-locker-operator
+    urls:
+    - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-v1.0.0.tgz
+    version: v1.0.0
+  - apiVersion: v1
     appVersion: v0.1.6
-    created: "2020-11-19T14:50:34.657838679Z"
+    created: "2020-12-30T15:24:09.308605334Z"
     description: Helm chart that deploys resource-locker-operator
     digest: ee140f5b45bfac1558a597e97723b2c93191ec3845127fad0251d9b983794ce5
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -19,10 +35,9 @@ entries:
     version: v0.1.6
   - apiVersion: v1
     appVersion: v0.1.5
-    created: "2020-11-19T14:50:34.65750329Z"
+    created: "2020-12-30T15:24:09.307927931Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 15354a97b8e5143ccea7f4838d3b9793b2318c5168d1c678593d55ccb04211a5
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -35,10 +50,9 @@ entries:
     version: v0.1.5
   - apiVersion: v1
     appVersion: v0.1.4
-    created: "2020-11-19T14:50:34.657129567Z"
+    created: "2020-12-30T15:24:09.30751593Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f22535603a11c87ccb7894fd15e49cac183acb699e330d4807f70d37839b6423
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -51,10 +65,9 @@ entries:
     version: v0.1.4
   - apiVersion: v1
     appVersion: v0.1.3
-    created: "2020-11-19T14:50:34.656783877Z"
+    created: "2020-12-30T15:24:09.307106728Z"
     description: Helm chart that deploys resource-locker-operator
     digest: ea0d5d2c05f6dd87add912ab66cec06af17bb2a7c773ea004933dbb499aa227f
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -67,10 +80,9 @@ entries:
     version: v0.1.3
   - apiVersion: v1
     appVersion: v0.1.2
-    created: "2020-11-19T14:50:34.655889155Z"
+    created: "2020-12-30T15:24:09.306171825Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f945e6f6a5474238c87fe1912939019678debaa18d2eb8fc63a712a4e4e0da80
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -83,10 +95,9 @@ entries:
     version: v0.1.2
   - apiVersion: v1
     appVersion: v0.1.1
-    created: "2020-11-19T14:50:34.655322881Z"
+    created: "2020-12-30T15:24:09.305532323Z"
     description: Helm chart that deploys resource-locker-operator
     digest: c0a4d3572e7262f8ba42e8a91424d3a82e65bb286276a8145d0156a2b770200c
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -99,10 +110,9 @@ entries:
     version: v0.1.1
   - apiVersion: v1
     appVersion: v0.1.0
-    created: "2020-11-19T14:50:34.654752922Z"
+    created: "2020-12-30T15:24:09.305223422Z"
     description: Helm chart that deploys resource-locker-operator
     digest: b679c71b3ecc5fb33cec0bac840203a88ff95689cd5742684d5539391854e7af
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -115,10 +125,9 @@ entries:
     version: v0.1.0
   - apiVersion: v1
     appVersion: pre0.1.0
-    created: "2020-11-19T14:50:34.654134145Z"
+    created: "2020-12-30T15:24:09.304914921Z"
     description: Helm chart that deploys resource-locker-operator
     digest: cfcc2982c20e9e65c2b87aa48c572134509f27a9cd5bfcb43268860ac84bee29
-    engine: gotpl
     keywords:
     - resource-enforcing
     - patches-enforcing
@@ -129,4 +138,4 @@ entries:
     urls:
     - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-pre0.1.0.tgz
     version: pre0.1.0
-generated: "2020-11-19T14:50:34.652859146Z"
+generated: "2020-12-30T15:24:09.304411419Z"
