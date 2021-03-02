@@ -70,7 +70,7 @@ func main() {
 	}
 
 	if err = (&controllers.ResourceLockerReconciler{
-		EnforcingReconciler: lockedresourcecontroller.NewEnforcingReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("ResourceLocker_controller"), false),
+		EnforcingReconciler: lockedresourcecontroller.NewEnforcingReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetAPIReader(), mgr.GetEventRecorderFor("ResourceLocker_controller"), false),
 		Log:                 ctrl.Log.WithName("controllers").WithName("ResourceLocker"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceLocker")
