@@ -220,6 +220,29 @@ export KUBERNETES_SERVICE_PORT=6443
 make run ENABLE_WEBHOOKS=false
 ```
 
+### Test helm chart locally
+
+Define an image and tag. For example...
+
+```shell
+export imageRepository="quay.io/redhat-cop/resource-locker-operator"
+export imageTag="v1.0.3"
+```
+
+Deploy chart...
+
+```shell
+make helmchart IMG=${imageRepository} VERSION=${imageTag}
+helm upgrade -i resource-locker-operator-local charts/resource-locker-operator -n resource-locker-operator-local --create-namespace
+```
+
+Delete...
+
+```shell
+helm delete resource-locker-operator-local -n resource-locker-operator-local
+kubectl delete -f charts/resource-locker-operator/crds/crds.yaml
+```
+
 ## Building/Pushing the operator image
 
 ```shell
