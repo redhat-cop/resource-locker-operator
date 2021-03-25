@@ -21,13 +21,12 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "resource-locker-operator.serviceAccountName" . }}    
+      {{- end }}   
       containers:
       - command:
         - /manager
         args:
-        - --leader-elect
+        - --enable-leader-election
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: {{ .Chart.Name }}

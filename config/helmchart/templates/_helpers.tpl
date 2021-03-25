@@ -50,14 +50,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "resource-locker-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "resource-locker-operator.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "resource-locker-operator.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
