@@ -8,8 +8,8 @@
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
 
-* Resources. This will instruct the operator to create and enforce the specified resource. In this case the operator "owns" the created resources.
-* Patches to resources. This will instruct the operator to patch- and enforce the change on- a pre-existing resource. In this case the operator does not "own" the resource.
+* Resources. This will instruct the operator to create and enforce the specified resource. In this case, the operator "owns" the created resources.
+* Patches to resources. This will instruct the operator to patch- and enforce the change on- a pre-existing resource. In this case, the operator does not "own" the resource.
 
 Locked resources are defined with the `ResourceLocker` CRD. Here is the high-level structure of this CRD:
 
@@ -41,7 +41,7 @@ It contains:
 * `patches`: representing an array of patches
 * `serviceAccountRef`: a reference to a service account defined in the same namespace as the ResourceLocker CR, that will be used to create the resources and apply the patches. If not specified the service account will be defaulted to: `default`
 
-For each ResourceLocker a manager is dynamically allocated. For each resource and patch a controller with the needed watches is created and associated with the previously created manager.
+For each ResourceLocker, a manager is dynamically allocated. For each resource and patch, a controller with the needed watches is created and associated with the previously created manager.
 
 ## Resources Locking
 
@@ -72,8 +72,8 @@ spec:
     name: default
 ```
 
-I this example we lock in a ResourceQuota configuration. Resources must be fully specified (i.e. no templating is allowed and all the mandatory fields must be initialized).
-Resources created this way are allowed to drift from the desired state only in the `excludedPaths`, which are jsonPath expressions. If drift occurs in other section of the resource, the operator will immediately reset the resource. The following `excludedPaths` are always added:
+In this example, we lock in a ResourceQuota configuration. Resources must be fully specified (i.e. no templating is allowed and all the mandatory fields must be initialized).
+Resources created this way are allowed to drift from the desired state only in the `excludedPaths`, which are jsonPath expressions. If drift occurs in other sections of the resource, the operator will immediately reset the resource. The following `excludedPaths` are always added:
 
 * `.metadata`
 * `.status`
@@ -120,8 +120,8 @@ spec:
 A patch is defined by the following:
 
 * `targetObjectRef`: representing the object to which the patch needs to be applied. Notice that this kind of object reference can refer to any object type located in any namespace.
-* `sourceObjectRefs`: representing a set of objects that will be used as parameters for the patch template. If the `fieldPath` is not specified, the entire object will be passed as parameter. If the `fieldPath` field is specified, then only the portion of the object specified selected by it will be passed as parameter. The `fieldPath` field must be a valid `jsonPath` expression as defined [here](https://goessner.net/articles/JsonPath/index.html#e2). This [site](https://jsonpath.com/) can be used to test jsonPath expressions. The jsonPath expression is processed using this [library](https://godoc.org/k8s.io/client-go/util/jsonpath), if more than one result is returned by the jsonPath expression only the first one will be considered.
-* `patchTemplate`: a [go template](https://golang.org/pkg/text/template/) template representing the patch. The go template must resolved to a yaml structure representing a valid patch for the target object. The yaml structure will be converted to json. When processing this template, one parameter is passed structured as an array containing the sourceObjects (or their fields if the `fieldPath` is specified).
+* `sourceObjectRefs`: representing a set of objects that will be used as parameters for the patch template. If the `fieldPath` is not specified, the entire object will be passed as the parameter. If the `fieldPath` field is specified, then only the portion of the object specified selected by it will be passed as the parameter. The `fieldPath` field must be a valid `jsonPath` expression as defined [here](https://goessner.net/articles/JsonPath/index.html#e2). This [site](https://jsonpath.com/) can be used to test jsonPath expressions. The jsonPath expression is processed using this [library](https://godoc.org/k8s.io/client-go/util/jsonpath) if more than one result is returned by the jsonPath expression only the first one will be considered.
+* `patchTemplate`: a [go template](https://golang.org/pkg/text/template/) template representing the patch. The go template must be resolved to a yaml structure representing a valid patch for the target object. The yaml structure will be converted to json. When processing this template, one parameter is passed structured as an array containing the sourceObjects (or their fields if the `fieldPath` is specified).
 * `patchType`: the type of patch, must be one of the following:
   * `application/json-patch+json`
   * `application/merge-patch+json`
@@ -133,7 +133,7 @@ If not specified the patchType will be defaulted to: `application/strategic-merg
 
 ## Multitenancy
 
-The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially any objects (including secrets), in reality one needs to have been given permission to do so via permissions granted to the referenced service account.
+The referenced service account will be used to create the client used by the manager and the underlying controller that enforce the resources and the patches. So while it is theoretically possible to declare the intention to create any object and to patch any object reading values potentially any objects (including secrets), in reality, one needs to have been given permission to do so via permissions granted to the referenced service account.
 This allows for the following:
 
 1. Running the operator with relatively restricted permissions.
@@ -169,7 +169,7 @@ oc new-project resource-locker-operator
 
 * Once there, you can search for this operator by name: `resource locker operator`. This will then return an item for our operator and you can select it to get started. Once you've arrived here, you'll be presented with an option to install, which will begin the process.
 * After clicking the install button, you can then select the namespace that you would like to install this to as well as the installation strategy you would like to proceed with (`Automatic` or `Manual`).
-* Once you've made your selection, you can select `Subscribe` and the installation will begin. After a few moments you can go ahead and check your namespace and you should see the operator running.
+* Once you've made your selection, you can select `Subscribe` and the installation will begin. After a few moments, you can go ahead and check your namespace and you should see the operator running.
 
 ![Resource Locker Operator](./media/resource-locker-operator.png)
 
