@@ -213,7 +213,7 @@ oc new-project resource-locker-operator-local
 kustomize build ./config/local-development | oc apply -f - -n resource-locker-operator-local
 #oc apply -f config/rbac/role.yaml -n resource-locker-operator-local
 #oc apply -f config/rbac/role_binding.yaml -n resource-locker-operator-local
-export token=$(oc serviceaccounts get-token 'default' -n resource-locker-operator-local)
+export token=$(oc serviceaccounts get-token 'resource-locker-operator-controller-manager' -n resource-locker-operator-local)
 oc login --token ${token}
 export KUBERNETES_SERVICE_HOST=<your kube host>
 export KUBERNETES_SERVICE_PORT=6443
@@ -226,7 +226,7 @@ Define an image and tag. For example...
 
 ```shell
 export imageRepository="quay.io/redhat-cop/resource-locker-operator"
-export imageTag="v1.0.3"
+export imageTag=$(git describe --tags --abbrev=0)" # grabs the most recent git tag, which should match the image tag
 ```
 
 Deploy chart...
