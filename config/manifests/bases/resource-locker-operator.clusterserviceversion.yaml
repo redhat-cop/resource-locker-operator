@@ -123,9 +123,9 @@ metadata:
     categories: Security
     certified: "false"
     containerImage: quay.io/redhat-cop/resource-locker-operator
-    operatorframework.io/suggested-namespace: resource-locker-operator
     createdAt: 11/14/2019
     description: This operator provides a facility to lock resources and / or patches into the state described by its custom resource preventing any drifts.
+    operatorframework.io/suggested-namespace: resource-locker-operator
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/redhat-cop/resource-locker-operator
