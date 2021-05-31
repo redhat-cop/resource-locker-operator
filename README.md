@@ -203,6 +203,14 @@ helm repo update
 helm upgrade resource-locker-operator resource-locker-operator/resource-locker-operator
 ```
 
+## Metrics
+
+Prometheus compatible metrics are exposed by the Operator and can be integrated into OpenShift's default cluster monitoring. To enable OpenShift cluster monitoring, label the namespace the operator is deployed in with the label `openshift.io/cluster-monitoring="true"`.
+
+```shell
+oc label namespace <namespace> openshift.io/cluster-monitoring="true"
+```
+
 ## Development
 
 ## Running the operator locally
@@ -211,9 +219,7 @@ helm upgrade resource-locker-operator resource-locker-operator/resource-locker-o
 make install
 oc new-project resource-locker-operator-local
 kustomize build ./config/local-development | oc apply -f - -n resource-locker-operator-local
-#oc apply -f config/rbac/role.yaml -n resource-locker-operator-local
-#oc apply -f config/rbac/role_binding.yaml -n resource-locker-operator-local
-export token=$(oc serviceaccounts get-token 'resource-locker-operator-controller-manager' -n resource-locker-operator-local)
+export token=$(oc serviceaccounts get-token 'resource-locker-controller-manager' -n resource-locker-operator-local)
 oc login --token ${token}
 export KUBERNETES_SERVICE_HOST=<your kube host>
 export KUBERNETES_SERVICE_PORT=6443
@@ -247,6 +253,7 @@ kubectl delete -f charts/resource-locker-operator/crds/crds.yaml
 
 ```shell
 export repo=raffaelespazzoli #replace with yours
+docker login quay.io/$repo
 make docker-build IMG=quay.io/$repo/resource-locker-operator:latest
 make docker-push IMG=quay.io/$repo/resource-locker-operator:latest
 ```
@@ -258,11 +265,21 @@ make manifests
 make bundle IMG=quay.io/$repo/resource-locker-operator:latest
 operator-sdk bundle validate ./bundle --select-optional name=operatorhub
 make bundle-build BUNDLE_IMG=quay.io/$repo/resource-locker-operator-bundle:latest
-podman push quay.io/$repo/resource-locker-operator-bundle:latest
+docker push quay.io/$repo/resource-locker-operator-bundle:latest
 operator-sdk bundle validate quay.io/$repo/resource-locker-operator-bundle:latest --select-optional name=operatorhub
 oc new-project resource-locker-operator
+oc label namespace resource-locker-operator openshift.io/cluster-monitoring="true"
 operator-sdk cleanup resource-locker-operator -n resource-locker-operator
 operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator quay.io/$repo/resource-locker-operator-bundle:latest
+```
+
+#### Testing metrics
+
+```sh
+export operatorNamespace=resource-locker-operator-local # or resource-locker-operator
+oc label namespace ${operatorNamespace} openshift.io/cluster-monitoring="true"
+oc rsh -n openshift-monitoring -c prometheus prometheus-k8s-0 /bin/bash
+curl -v -s -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://resource-locker-operator-controller-manager-metrics.${operatorNamespace}.svc.cluster.local:8443/metrics
 ```
 
 ## Releasing
