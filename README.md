@@ -232,7 +232,7 @@ Define an image and tag. For example...
 
 ```shell
 export imageRepository="quay.io/redhat-cop/resource-locker-operator"
-export imageTag=$(git describe --tags --abbrev=0)" # grabs the most recent git tag, which should match the image tag
+export imageTag="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/redhat-cop/resource-locker-operator.git '*.*.*' | tail --lines=1 | cut --delimiter='/' --fields=3)"
 ```
 
 Deploy chart...
@@ -279,7 +279,9 @@ operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator
 export operatorNamespace=resource-locker-operator-local # or resource-locker-operator
 oc label namespace ${operatorNamespace} openshift.io/cluster-monitoring="true"
 oc rsh -n openshift-monitoring -c prometheus prometheus-k8s-0 /bin/bash
+export operatorNamespace=resource-locker-operator-local # or resource-locker-operator
 curl -v -s -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://resource-locker-operator-controller-manager-metrics.${operatorNamespace}.svc.cluster.local:8443/metrics
+exit
 ```
 
 ## Releasing
