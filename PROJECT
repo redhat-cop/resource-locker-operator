@@ -6,6 +6,7 @@ repo: github.com/redhat-cop/resource-locker-operator
 resources:
 - api:
     crdVersion: v1
+    namespaced: true
   group: redhatcop
   kind: ResourceLocker
   version: v1alpha1
