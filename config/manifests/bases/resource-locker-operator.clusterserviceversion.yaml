@@ -124,7 +124,8 @@ metadata:
     certified: "false"
     containerImage: quay.io/redhat-cop/resource-locker-operator
     createdAt: 11/14/2019
-    description: This operator provides a facility to lock resources and / or patches into the state described by its custom resource preventing any drifts.
+    description: This operator provides a facility to lock resources and / or patches
+      into the state described by its custom resource preventing any drifts.
     operatorframework.io/suggested-namespace: resource-locker-operator
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
@@ -136,7 +137,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ResourceLocker Represents the intetion to create and enforce a set of resources and/or patches.
+    - description: ResourceLocker Represents the intetion to create and enforce a
+        set of resources and/or patches.
       displayName: Resource Locker
       kind: ResourceLocker
       name: resourcelockers.redhatcop.redhat.io

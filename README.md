@@ -4,7 +4,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/redhat-cop/resource-locker-operator)](https://goreportcard.com/report/github.com/redhat-cop/resource-locker-operator)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/redhat-cop/resource-locker-operator)
 
-
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
 
@@ -272,6 +271,8 @@ oc label namespace resource-locker-operator openshift.io/cluster-monitoring="tru
 operator-sdk cleanup resource-locker-operator -n resource-locker-operator
 operator-sdk run bundle --install-mode AllNamespaces -n resource-locker-operator quay.io/$repo/resource-locker-operator-bundle:latest
 ```
+
+### Testing
 
 #### Testing metrics
 
