@@ -55,6 +55,7 @@ SHELL = /usr/bin/env bash -o pipefail
 
 CHART_REPO_URL ?= http://example.com
 HELM_REPO_DEST ?= /tmp/gh-pages
+OPERATOR_NAME ?=$(shell basename -z `pwd`)
 
 all: build
 
