@@ -8,6 +8,8 @@ resources:
     crdVersion: v1
     namespaced: true
   group: redhatcop
+  domain: redhat.io
+  controller: true  
   kind: ResourceLocker
   version: v1alpha1
   path: github.com/redhat-cop/resource-locker-operator/api/v1alpha1 
