@@ -2,8 +2,25 @@ apiVersion: v1
 entries:
   resource-locker-operator:
   - apiVersion: v1
+    appVersion: v1.0.9
+    created: "2021-08-11T15:50:32.264903678Z"
+    description: Helm chart that deploys resource-locker-operator
+    digest: 5c045bc9fb2263e02ae51893bafa6698c9d3837f5d94d2af2e749b222a180c0e
+    keywords:
+    - volume
+    - storage
+    - csi
+    - expansion
+    - monitoring
+    name: resource-locker-operator
+    sources:
+    - https://github.com/redhat-cop/resource-locker-operator
+    urls:
+    - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-v1.0.9.tgz
+    version: v1.0.9
+  - apiVersion: v1
     appVersion: v1.0.8
-    created: "2021-07-18T07:42:08.126439755Z"
+    created: "2021-08-11T15:50:32.264396374Z"
     description: Helm chart that deploys resource-locker-operator
     digest: c70a03b3c4574f01baabc7a75691199210609cee09033d6a227c7ff1472d7d5c
     keywords:
@@ -20,7 +37,7 @@ entries:
     version: v1.0.8
   - apiVersion: v1
     appVersion: v1.0.7
-    created: "2021-07-18T07:42:08.118604407Z"
+    created: "2021-08-11T15:50:32.26390847Z"
     description: Helm chart that deploys resource-locker-operator
     digest: e249e790d979b640e3af691de6396aca6b94e0d6097a5155a714ad50cf060672
     keywords:
@@ -37,7 +54,7 @@ entries:
     version: v1.0.7
   - apiVersion: v1
     appVersion: v1.0.6
-    created: "2021-07-18T07:42:08.118047296Z"
+    created: "2021-08-11T15:50:32.263437866Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 89a124ad568112496b022196fef320960912010bc94687d47685c780461b8295
     keywords:
@@ -54,7 +71,7 @@ entries:
     version: v1.0.6
   - apiVersion: v1
     appVersion: v1.0.5
-    created: "2021-07-18T07:42:08.117478386Z"
+    created: "2021-08-11T15:50:32.262966562Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f04dee2f29bf00e98c5a4de3e22d5e2ed56188cc2fda1c162c5f31f82fafb470
     keywords:
@@ -71,7 +88,7 @@ entries:
     version: v1.0.5
   - apiVersion: v1
     appVersion: v1.0.4
-    created: "2021-07-18T07:42:08.116947276Z"
+    created: "2021-08-11T15:50:32.262131255Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 00a5da0446cd55e61ca284ad8c2fe2d8aedbad491bfbdb0d44f7f5cb35e6f93b
     keywords:
@@ -88,7 +105,7 @@ entries:
     version: v1.0.4
   - apiVersion: v1
     appVersion: v1.0.3
-    created: "2021-07-18T07:42:08.116431466Z"
+    created: "2021-08-11T15:50:32.261583551Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 0e0fafe6df191cfb1ea42bf1efa8ee10267b9effb08019c7beafa289d888d572
     keywords:
@@ -105,7 +122,7 @@ entries:
     version: v1.0.3
   - apiVersion: v1
     appVersion: v1.0.2
-    created: "2021-07-18T07:42:08.116056059Z"
+    created: "2021-08-11T15:50:32.261150347Z"
     description: Helm chart that deploys resource-locker-operator
     digest: d42029cc5b55ce2fcf0866e0cc8a2a000350b0e296f3aa95d923485c205acf2d
     keywords:
@@ -122,7 +139,7 @@ entries:
     version: v1.0.2
   - apiVersion: v1
     appVersion: v1.0.1
-    created: "2021-07-18T07:42:08.115655251Z"
+    created: "2021-08-11T15:50:32.260583243Z"
     description: Helm chart that deploys resource-locker-operator
     digest: debcb46ada2cce729c3bb418d1e518631b3681ade045053ac9f3edb0b96aea22
     keywords:
@@ -139,7 +156,7 @@ entries:
     version: v1.0.1
   - apiVersion: v1
     appVersion: v1.0.0
-    created: "2021-07-18T07:42:08.115273744Z"
+    created: "2021-08-11T15:50:32.259554534Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 8229a55f5e4ab47ffb423af42385cbff2766fb2e5f5356eb838ab4e744d9f1d4
     keywords:
@@ -156,7 +173,7 @@ entries:
     version: v1.0.0
   - apiVersion: v1
     appVersion: v0.1.6
-    created: "2021-07-18T07:42:08.114862836Z"
+    created: "2021-08-11T15:50:32.259222431Z"
     description: Helm chart that deploys resource-locker-operator
     digest: ee140f5b45bfac1558a597e97723b2c93191ec3845127fad0251d9b983794ce5
     keywords:
@@ -171,7 +188,7 @@ entries:
     version: v0.1.6
   - apiVersion: v1
     appVersion: v0.1.5
-    created: "2021-07-18T07:42:08.113807716Z"
+    created: "2021-08-11T15:50:32.258866228Z"
     description: Helm chart that deploys resource-locker-operator
     digest: 15354a97b8e5143ccea7f4838d3b9793b2318c5168d1c678593d55ccb04211a5
     keywords:
@@ -186,7 +203,7 @@ entries:
     version: v0.1.5
   - apiVersion: v1
     appVersion: v0.1.4
-    created: "2021-07-18T07:42:08.113382908Z"
+    created: "2021-08-11T15:50:32.258476125Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f22535603a11c87ccb7894fd15e49cac183acb699e330d4807f70d37839b6423
     keywords:
@@ -201,7 +218,7 @@ entries:
     version: v0.1.4
   - apiVersion: v1
     appVersion: v0.1.3
-    created: "2021-07-18T07:42:08.1129261Z"
+    created: "2021-08-11T15:50:32.258110822Z"
     description: Helm chart that deploys resource-locker-operator
     digest: ea0d5d2c05f6dd87add912ab66cec06af17bb2a7c773ea004933dbb499aa227f
     keywords:
@@ -216,7 +233,7 @@ entries:
     version: v0.1.3
   - apiVersion: v1
     appVersion: v0.1.2
-    created: "2021-07-18T07:42:08.112487591Z"
+    created: "2021-08-11T15:50:32.257773919Z"
     description: Helm chart that deploys resource-locker-operator
     digest: f945e6f6a5474238c87fe1912939019678debaa18d2eb8fc63a712a4e4e0da80
     keywords:
@@ -231,7 +248,7 @@ entries:
     version: v0.1.2
   - apiVersion: v1
     appVersion: v0.1.1
-    created: "2021-07-18T07:42:08.112106084Z"
+    created: "2021-08-11T15:50:32.257451917Z"
     description: Helm chart that deploys resource-locker-operator
     digest: c0a4d3572e7262f8ba42e8a91424d3a82e65bb286276a8145d0156a2b770200c
     keywords:
@@ -246,7 +263,7 @@ entries:
     version: v0.1.1
   - apiVersion: v1
     appVersion: v0.1.0
-    created: "2021-07-18T07:42:08.111670776Z"
+    created: "2021-08-11T15:50:32.257033313Z"
     description: Helm chart that deploys resource-locker-operator
     digest: b679c71b3ecc5fb33cec0bac840203a88ff95689cd5742684d5539391854e7af
     keywords:
@@ -259,4 +276,4 @@ entries:
     urls:
     - https://redhat-cop.github.io/resource-locker-operator/resource-locker-operator/resource-locker-operator-v0.1.0.tgz
     version: v0.1.0
-generated: "2021-07-18T07:42:08.110662857Z"
+generated: "2021-08-11T15:50:32.256230607Z"
