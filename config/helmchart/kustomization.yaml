@@ -12,6 +12,9 @@ namePrefix: resource-locker-operator-
 #commonLabels:
 #  someName: someValue
 
+resources: 
+- service-account.yaml
+
 bases:
 - ../rbac
 - ../prometheus
