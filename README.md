@@ -4,6 +4,69 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/redhat-cop/resource-locker-operator)](https://goreportcard.com/report/github.com/redhat-cop/resource-locker-operator)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/redhat-cop/resource-locker-operator)
 
+---
+
+## Deprecation Notice
+
+This operator is deprecated in favor of the [patch-operator](https://github.com/redhat-cop/patch-operator).
+The resource-locker-operator as mostly used to create patches declaratively, while the other features regarding creating resources declaratively were rarely used. Creating resources declaratively can be better achieved with GitOps operators such as [ArgoCD](https://argo-cd.readthedocs.io/en/stable/) or [Flux](https://fluxcd.io/). So, it was decided to create an operator dedicated to declarative patch management with better feature and a more meaningful name.
+
+With this deprecation, we are stopping any further development on the resource-locker-operator and we encourage users to migrate to patch-operator.
+
+Migration should be relatively straightforward as we maintained the patch structure definition. Here is an example:
+
+```yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: ResourceLocker
+metadata:
+  name: test-simple-patch
+spec:
+  serviceAccountRef: 
+    name: default
+  patches:
+  - targetObjectRef:
+      apiVersion: v1
+      kind: ServiceAccount
+      name: test
+      namespace: resource-locker-test
+    patchTemplate: |
+      metadata:
+        annotations:
+          hello: bye
+          test3: test3
+          test6: test6
+    patchType: application/strategic-merge-patch+json
+    id: patch1    
+```
+
+This `ResourceLocker` patch becomes:
+
+```yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Patch
+metadata:
+  name: simple-patch
+spec:
+  patches:
+    patch1:
+      targetObjectRef:
+        apiVersion: v1
+        kind: ServiceAccount
+        name: test
+        namespace: test-patch-operator
+      patchTemplate: |
+        metadata:
+          annotations:
+            hello: bye
+            test3: test3
+            test6: test6
+      patchType: application/strategic-merge-patch+json  
+```
+
+Notice how the `id` of the patch now becomes the key of the map of patches. This is really the only change one has to do to successfully migrate.
+
+---
+
 The resource locker operator allows you to specify a set of configurations that the operator will "keep in place" (lock) preventing any drifts.
 Two types of configurations may be specified:
 
